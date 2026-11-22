@@ -1,0 +1,64 @@
+{
+  "name": "aiguard-vscode",
+  "displayName": "AI Guard",
+  "description": "See what AI Guard did in each AI session, which files AI tools can't touch, and get a pop-up when it stops something.",
+  "version": "0.1.0",
+  "publisher": "aiguard",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "workspaceContains:.aiguard.yml",
+    "workspaceContains:.aiguard.yaml",
+    "workspaceContains:.aiguard.json"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiguard.openSessions",
+        "title": "AI Guard: Show sessions"
+      },
+      {
+        "command": "aiguard.showRules",
+        "title": "AI Guard: Show protected files"
+      },
+      {
+        "command": "aiguard.checkFile",
+        "title": "AI Guard: Check this file"
+      },
+      {
+        "command": "aiguard.verifyLog",
+        "title": "AI Guard: Verify edit log"
+      },
+      {
+        "command": "aiguard.init",
+        "title": "AI Guard: Create policy and install Claude Code hooks"
+      }
+    ],
+    "configuration": {
+      "title": "AI Guard",
+      "properties": {
+        "aiguard.popups": {
+          "type": "string",
+          "enum": [
+            "important",
+            "all",
+            "off"
+          ],
+          "default": "important",
+          "enumDescriptions": [
+            "Pop up when AI Guard stops something or needs your approval",
+            "Also pop up when values are swapped",
+            "Never pop up"
+          ],
+          "description": "When AI Guard should pop up a notification."
+        }
+      }
+    }
+  }
+}

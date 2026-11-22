@@ -1,0 +1,14 @@
+{
+  "name": "aiguard",
+  "version": "0.1.0",
+  "description": "Keep AI coding tools away from files that need a human: blocks or asks before AI edits, checks pull requests, and keeps a tamper-evident log.",
+  "bin": { "aiguard": "bin/aiguard.js" },
+  "main": "lib/policy.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "sync-extension": "node scripts/sync-extension.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,26 @@
+# Copy to .github/workflows/aiguard.yml
+# Then make "AI Guard" a required status check in your branch rules.
+name: AI Guard
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  aiguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so AI Guard can read every commit in the PR
+      - uses: your-org/aiguard@v0   # or a local path: ./tools/aiguard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aiguard-evidence
+          path: aiguard-evidence.json

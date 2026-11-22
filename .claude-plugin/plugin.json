@@ -1,0 +1,5 @@
+{
+  "name": "aiguard",
+  "version": "0.1.0",
+  "description": "Blocks or asks before Claude edits files protected by .aiguard.yml, and logs AI edits for pull request checks."
+}
