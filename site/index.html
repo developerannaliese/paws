@@ -77,6 +77,36 @@ nav .links a:hover { color: var(--fg); }
 footer { max-width: 960px; margin: 0 auto; padding: 40px 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); flex-wrap: wrap; gap: 12px; }
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--fg); }
+
+/* mobile: 375px and similar small screens */
+@media (max-width: 640px) {
+  .hero { padding: 48px 20px 40px; }
+  .hero h1 { font-size: 32px; }
+  .hero p { font-size: 16px; }
+  .hero .cta { flex-direction: column; align-items: stretch; }
+  .btn { text-align: center; }
+
+  nav { padding: 16px 20px; gap: 8px; }
+  nav .links { gap: 16px; font-size: 13px; }
+
+  .install { padding: 0 20px 40px; }
+  .install pre { font-size: 13px; padding: 14px 16px; white-space: pre-wrap; word-break: break-all; }
+
+  .demo { padding: 0 20px 60px; }
+  .demo-col pre { font-size: 12px; }
+
+  .features { padding: 0 20px 60px; }
+  .features h2 { font-size: 26px; margin-bottom: 24px; }
+
+  .how { padding: 0 20px 60px; }
+  .how h2 { font-size: 26px; margin-bottom: 24px; }
+
+  .policy { padding: 0 20px 60px; }
+  .policy h2 { font-size: 26px; }
+  .policy pre { font-size: 12px; padding: 16px; white-space: pre-wrap; word-break: break-all; }
+
+  footer { padding: 32px 20px; flex-direction: column; text-align: center; }
+}
 </style>
 </head>
 <body>
