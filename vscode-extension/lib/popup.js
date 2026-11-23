@@ -1,8 +1,8 @@
 'use strict';
 
-// `aiguard popup`: the companion that sits in the corner of the screen.
+// `paws popup`: the companion that sits in the corner of the screen.
 //  - a small live window, bottom-right (an app-style browser window, no tabs or address bar)
-//  - a native notification when AI Guard stops something or needs approval
+//  - a native notification when Paws stops something or needs approval
 // It reads the local database only; it serves on 127.0.0.1 behind a one-time token.
 
 const http = require('http');
@@ -14,6 +14,7 @@ const store = require('./store');
 const { popupPage } = require('./popup-page');
 const { page } = require('./ui-page');
 const { buildState, reveal } = require('./ui');
+const { loadPolicy } = require('./policy');
 
 function isToday(ts) {
   return new Date(ts).toDateString() === new Date().toDateString();
@@ -60,7 +61,7 @@ function notify(title, message) {
       const ps = `Add-Type -AssemblyName System.Windows.Forms; $n = New-Object System.Windows.Forms.NotifyIcon; $n.Icon = [System.Drawing.SystemIcons]::Shield; $n.Visible = $true; $n.ShowBalloonTip(5000, ${JSON.stringify(title)}, ${JSON.stringify(message)}, 'Info'); Start-Sleep -Seconds 6; $n.Dispose()`;
       spawn('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore', detached: true }).unref();
     } else {
-      execFileSync('notify-send', ['-a', 'AI Guard', title, message], opts);
+      execFileSync('notify-send', ['-a', 'Paws', title, message], opts);
     }
     return true;
   } catch (e) {
@@ -143,21 +144,41 @@ function startPopup({ port = 4478, env = process.env, notifications = true } = {
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
-    const given = req.headers['x-aiguard-token'] || url.searchParams.get('t');
+    const given = req.headers['x-paws-token'] || url.searchParams.get('t');
     if (!okHost(req.headers.host) || given !== token) {
       res.writeHead(403, { 'content-type': 'text/plain' });
-      res.end('AI Guard: open the pop-up from the aiguard popup command.');
+      res.end('Paws: open the pop-up from the paws popup command.');
       return;
     }
     const send = (code, body, type = 'application/json') => {
       res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' });
       res.end(type === 'application/json' ? JSON.stringify(body) : body);
     };
-    // Only repos AI Guard has actually recorded can be opened.
+    // Only repos Paws has actually recorded can be opened.
     const rootParam = url.searchParams.get('root');
     const root = rootParam && knownRoots(env).has(rootParam) ? rootParam : null;
     if (req.method === 'GET' && url.pathname === '/') return send(200, popupPage(token), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/feed') return send(200, feed(env));
+    if (req.method === 'GET' && url.pathname === '/api/settings') {
+      // Settings from the most recently active repo, or the root param
+      const settingsRoot = root || (store.recentEvents({ limit: 1 }, env)[0] || {}).root;
+      let settings = { redactEnabled: false, mode: 'placeholder', localModel: null, shellOutput: false, rules: [], policyFile: null, repo: null };
+      if (settingsRoot) {
+        try {
+          const policy = loadPolicy(settingsRoot);
+          if (policy) {
+            settings.redactEnabled = !!(policy.redact && policy.redact.enabled);
+            settings.mode = (policy.redact && policy.redact.mode) || 'placeholder';
+            settings.localModel = (policy.redact && policy.redact.localModel) || null;
+            settings.shellOutput = !!(policy.redact && policy.redact.shellOutput);
+            settings.rules = policy.rules.filter(r => !r.builtIn).map(r => ({ path: r.path, ai_edit: r.ai_edit, ai_read: r.ai_read, reason: r.reason }));
+            settings.policyFile = path.basename(policy.file);
+            settings.repo = path.basename(policy.root);
+          }
+        } catch (e) { /* use defaults */ }
+      }
+      return send(200, settings);
+    }
     if (req.method === 'GET' && url.pathname === '/full' && root) return send(200, page({ token, root }), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/state' && root) return send(200, buildState(root, env));
     if (req.method === 'POST' && url.pathname === '/api/reveal' && root) {
@@ -185,8 +206,8 @@ function startPopup({ port = 4478, env = process.env, notifications = true } = {
     lastId = fresh[fresh.length - 1].id;
     if (!notifications) return;
     const notices = fresh.map(describeForNotice).filter(Boolean);
-    if (notices.length === 1) sent.push(notices[0]) && notify('AI Guard', notices[0]);
-    else if (notices.length > 1) sent.push(`${notices.length} things`) && notify('AI Guard', `${notices[0]} And ${notices.length - 1} more.`);
+    if (notices.length === 1) sent.push(notices[0]) && notify('Paws', notices[0]);
+    else if (notices.length > 1) sent.push(`${notices.length} things`) && notify('Paws', `${notices[0]} And ${notices.length - 1} more.`);
   }, 1500);
   server.on('close', () => clearInterval(timer));
 

@@ -1,9 +1,9 @@
 'use strict';
 
-// Session view data, shared by the editor pop-up and `aiguard ui`.
+// Session view data, shared by the editor pop-up and `paws ui`.
 // Everything is read on this machine, on demand (the edit log in the repo and the local database),
-// the edit log in the repo (.aiguard/ledger.jsonl) and the private vault in
-// ~/.aiguard. Activity is grouped by AI session.
+// the edit log in the repo (.paws/ledger.jsonl) and the private vault in
+// ~/.paws. Activity is grouped by AI session.
 
 const http = require('http');
 const path = require('path');
@@ -124,11 +124,11 @@ function startServer({ root, port = 4477, env = process.env } = {}) {
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
-    const given = req.headers['x-aiguard-token'] || url.searchParams.get('t');
+    const given = req.headers['x-paws-token'] || url.searchParams.get('t');
     // Refuse other hosts (DNS rebinding) and anyone without this launch's token.
     if (!okHost(req.headers.host) || given !== token) {
       res.writeHead(403, { 'content-type': 'text/plain' });
-      res.end('AI Guard: open the link printed in your terminal.');
+      res.end('Paws: open the link printed in your terminal.');
       return;
     }
     const send = (code, body, type = 'application/json') => {

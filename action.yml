@@ -1,4 +1,4 @@
-name: AI Guard
+name: Paws
 description: Checks pull requests for AI-written changes to protected files and confirms the human approvals your policy requires.
 branding:
   icon: shield
@@ -12,17 +12,17 @@ inputs:
     default: ${{ github.token }}
   evidence-file:
     description: Where to write the evidence record
-    default: aiguard-evidence.json
+    default: paws-evidence.json
 runs:
   using: composite
   steps:
-    - name: Check AI changes against .aiguard.yml
+    - name: Check AI changes against .paws.yml
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        AIGUARD_REPORT_ONLY: ${{ inputs.report-only }}
-        AIGUARD_EVIDENCE: ${{ inputs.evidence-file }}
+        PAWS_REPORT_ONLY: ${{ inputs.report-only }}
+        PAWS_EVIDENCE: ${{ inputs.evidence-file }}
       run: |
-        args=(pr-check --evidence "$AIGUARD_EVIDENCE")
-        if [ "$AIGUARD_REPORT_ONLY" = "true" ]; then args+=(--report-only); fi
-        node "${{ github.action_path }}/bin/aiguard.js" "${args[@]}"
+        args=(pr-check --evidence "$PAWS_EVIDENCE")
+        if [ "$PAWS_REPORT_ONLY" = "true" ]; then args+=(--report-only); fi
+        node "${{ github.action_path }}/bin/paws.js" "${args[@]}"

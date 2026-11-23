@@ -326,8 +326,8 @@ function csvFindings(text, filePath, types) {
 
 // ---------- vault ----------
 
-function aiguardHome(env = process.env) {
-  return env.AIGUARD_HOME || process.env.AIGUARD_HOME || path.join(os.homedir(), '.aiguard');
+function pawsHome(env = process.env) {
+  return env.PAWS_HOME || process.env.PAWS_HOME || path.join(os.homedir(), '.paws');
 }
 
 function rootId(root) {
@@ -410,7 +410,7 @@ function remember(data, key, ph, value, fake) {
 class FileVault {
   constructor(root, env) {
     this.root = path.resolve(root);
-    this.file = path.join(aiguardHome(env), 'vault', `${rootId(root)}.json`);
+    this.file = path.join(pawsHome(env), 'vault', `${rootId(root)}.json`);
     this.data = { root: this.root, counters: {}, byKey: {}, byPlaceholder: {}, fakes: [] };
     try {
       this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
@@ -515,7 +515,7 @@ class DbVault {
 
   // Move an older plain JSON vault into the encrypted database, then delete it.
   migrate(env) {
-    const old = path.join(aiguardHome(env), 'vault', `${this.rid}.json`);
+    const old = path.join(pawsHome(env), 'vault', `${this.rid}.json`);
     if (!fs.existsSync(old)) return;
     try {
       const data = JSON.parse(fs.readFileSync(old, 'utf8'));
@@ -539,7 +539,7 @@ class DbVault {
 }
 
 function Vault(root, env) {
-  return require('./store').available() && !(env && env.AIGUARD_STORE === 'files') ? new DbVault(root, env) : new FileVault(root, env);
+  return require('./store').available() && !(env && env.PAWS_STORE === 'files') ? new DbVault(root, env) : new FileVault(root, env);
 }
 
 // ---------- redact and restore ----------
@@ -581,10 +581,36 @@ function findAll(text, opts = {}) {
   return kept;
 }
 
+// Confidence: how sure Paws is that this is real personal data.
+//  - "high": checksum-validated (TFN, ABN, Medicare, card) or structured (CSV column, vault match)
+//  - "medium": pattern-matched without checksum (email, phone, address, secret, labelled name)
+//  - "low": from local model only (names in free text, loose addresses)
+const HIGH_CONFIDENCE = new Set(['card', 'medicare', 'tfn', 'abn']);
+function confidence(f) {
+  if (f.priority === -1) return 'high'; // vault match: we've seen this value before
+  if (f.priority === 50) return 'high'; // CSV column: header says it's PII
+  if (f.priority === 60) return 'low';  // local model finding
+  if (HIGH_CONFIDENCE.has(f.type)) return 'high';
+  if (f.type === 'secret') return 'high';
+  return 'medium';
+}
+
 function redactText(text, opts = {}) {
   const vault = opts.vault;
+  const confirm = opts.confirm;
   // Never redact a stand-in again: text the AI already saw may pass through twice.
-  const findings = findAll(text, opts).filter((f) => !(vault && vault.valueOf(text.slice(f.start, f.end)) !== undefined));
+  const allFindings = findAll(text, opts).filter((f) => !(vault && vault.valueOf(text.slice(f.start, f.end)) !== undefined));
+
+  // When confirm mode is on, split findings into auto-redact (high/medium) and needs-confirm (low).
+  const findings = [];
+  const uncertain = [];
+  for (const f of allFindings) {
+    const conf = confidence(f);
+    f.confidence = conf;
+    if (confirm && conf === 'low') uncertain.push(f);
+    else findings.push(f);
+  }
+
   let out = '';
   let pos = 0;
   const summary = {};
@@ -603,7 +629,7 @@ function redactText(text, opts = {}) {
     if (!standins.includes(ph)) standins.push(ph);
   }
   out += text.slice(pos);
-  return { text: out, count: findings.length, summary, standins };
+  return { text: out, count: findings.length, summary, standins, uncertain };
 }
 
 const PLACEHOLDER = /\[([A-Z_]+)_(\d+)\]/g;
@@ -634,7 +660,7 @@ function looksBinary(buf) {
 }
 
 module.exports = {
-  ALL_TYPES, DETECTORS, Vault, FileVault, DbVault, aiguardHome, rootId,
+  ALL_TYPES, DETECTORS, Vault, FileVault, DbVault, pawsHome, rootId,
   findAll, redactText, restoreText, looksBinary, fakeValue,
   luhn, validTfn, validAbn, validMedicare,
 };

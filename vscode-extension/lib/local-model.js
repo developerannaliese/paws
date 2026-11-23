@@ -3,7 +3,7 @@
 // Optional local AI model for things patterns can't catch, such as names,
 // addresses written loosely, and internal confidential terms.
 // It talks only to a model server on this machine (Ollama by default), so text
-// never leaves the laptop. If the server isn't running, AI Guard carries on
+// never leaves the laptop. If the server isn't running, Paws carries on
 // with its built-in detectors.
 //
 // Policy:  redact:

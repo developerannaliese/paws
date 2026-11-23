@@ -1,7 +1,7 @@
 'use strict';
 
 // Push hidden-file rules into each AI tool's own ignore settings, so tools
-// that AI Guard can't hook into still keep those files out of the AI's view.
+// that Paws can't hook into still keep those files out of the AI's view.
 // File names follow each tool's documentation at the time of writing; check
 // them against the current docs for the tools your team uses.
 
@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const { hiddenRules } = require('./policy');
 
-const START = '# >>> aiguard: managed block, edit .aiguard.yml instead >>>';
-const END = '# <<< aiguard <<<';
+const START = '# >>> paws: managed block, edit .paws.yml instead >>>';
+const END = '# <<< paws <<<';
 
 const IGNORE_FILES = [
   { file: '.cursorignore', tool: 'Cursor' },

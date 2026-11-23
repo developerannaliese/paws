@@ -10,7 +10,7 @@ const ledger = require('../lib/ledger');
 const { sync } = require('../lib/sync');
 const redact = require('../lib/redact');
 
-const SAMPLE_POLICY = `# AI Guard policy: which files AI coding tools may change.
+const SAMPLE_POLICY = `# Paws policy: which files AI coding tools may change.
 # ai_read: block   AI tools may not open, search or print these files
 # ai_read: redact  AI tools see the file with personal and confidential data blanked
 # ai_edit: allow | warn | review | block
@@ -67,29 +67,35 @@ redact:
 `;
 
 function usage() {
-  console.log(`AI Guard ${VERSION}: keep AI coding tools away from files that need a human.
+  console.log(`Paws ${VERSION}: keep AI coding tools away from files that need a human.
 
 Usage:
-  aiguard init [--claude]        Create .aiguard.yml here; --claude also installs the Claude Code hooks
-  aiguard check <path> [...]     Show what an AI edit to each path needs
-  aiguard rules                  List the rules in force
-  aiguard sync                   Copy hidden-file rules into Cursor, Windsurf, Gemini,
+  paws init [--claude]        Create .paws.yml here; --claude also installs the Claude Code hooks
+  paws check <path> [...]     Show what an AI edit to each path needs
+  paws rules                  List the rules in force
+  paws sync                   Copy hidden-file rules into Cursor, Windsurf, Gemini,
                                  Aider and Claude Code ignore settings
-  aiguard scan <file> [...]      Show what personal or confidential data a file contains
-  aiguard redact <file> [--fake] Print the file as an AI tool would see it
-  aiguard hook                   Claude Code hook (reads hook JSON on stdin)
-  aiguard pr-check [options]     Check a pull request or a commit range
+  paws scan <file> [...]      Show what personal or confidential data a file contains
+  paws redact <file> [--fake] Print the file as an AI tool would see it
+  paws hook                   Claude Code hook (reads hook JSON on stdin)
+  paws pr-check [options]     Check a pull request or a commit range
       --base <ref> --head <ref>  Commit range (defaults come from GitHub Actions)
       --report-only              Report problems without failing
       --evidence <file>          Write the signed-off evidence record as JSON
-  aiguard verify-log             Check the edit log hasn't been tampered with
-  aiguard ui [--port 4477]       Open the local dashboard (this machine only)
-  aiguard popup                  Small live window in the corner of the screen, plus
+  paws verify-log             Check the edit log hasn't been tampered with
+  paws ui [--port 4477]       Open the local dashboard (this machine only)
+  paws popup                  Small live window in the corner of the screen, plus
                                  notifications when something is stopped
-  aiguard gateway [--port 4480]  Run the local agent: AI traffic goes through it and
+  paws gateway [--port 4480]  Run the local agent: AI traffic goes through it and
                                  real data is swapped for stand-ins before it leaves
-  aiguard run <command...>       Start the agent and run an AI tool through it,
-                                 e.g. aiguard run claude
+  paws run <command...>       Start the agent and run an AI tool through it,
+                                 e.g. paws run claude
+  paws clear [options]        Clean up local data
+      --session <id>             Clear events for one session
+      --older-than <days>        Clear events older than N days
+      --vault                    Clear the vault (placeholder mappings) for this repo
+      --all                      Clear everything for this repo
+  paws sessions               List recent sessions
 `);
 }
 
@@ -112,11 +118,11 @@ function installClaudeHooks(dir) {
   if (fs.existsSync(settingsFile)) {
     settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
   }
-  const command = `node "${path.resolve(__dirname, 'aiguard.js')}" hook`;
+  const command = `"${process.execPath}" "${path.resolve(__dirname, 'paws.js')}" hook`;
   settings.hooks = settings.hooks || {};
   const add = (event, matcher) => {
     const list = (settings.hooks[event] = settings.hooks[event] || []);
-    const already = list.some((m) => (m.hooks || []).some((h) => String(h.command || '').includes('aiguard')));
+    const already = list.some((m) => (m.hooks || []).some((h) => String(h.command || '').includes('paws')));
     if (!already) list.push({ matcher, hooks: [{ type: 'command', command }] });
   };
   add('PreToolUse', 'Edit|Write|MultiEdit|NotebookEdit|Bash|Read|NotebookRead|Grep|Glob|LS');
@@ -142,11 +148,11 @@ async function main() {
 
   if (cmd === 'init') {
     const dir = process.cwd();
-    const file = path.join(dir, '.aiguard.yml');
-    if (fs.existsSync(file)) console.log('.aiguard.yml already exists; leaving it as it is.');
+    const file = path.join(dir, '.paws.yml');
+    if (fs.existsSync(file)) console.log('.paws.yml already exists; leaving it as it is.');
     else {
       fs.writeFileSync(file, SAMPLE_POLICY);
-      console.log('Created .aiguard.yml with example rules. Edit the paths to match your repo.');
+      console.log('Created .paws.yml with example rules. Edit the paths to match your repo.');
     }
     if (args.includes('--claude')) {
       const s = installClaudeHooks(dir);
@@ -154,14 +160,14 @@ async function main() {
     }
     const out = sync(loadPolicy(dir));
     console.log(`Hid ${out.patterns.length} path(s) from AI tools in: ${out.written.map((w) => w.file).join(', ')}.`);
-    console.log('Commit .aiguard.yml and .aiguard/ledger.jsonl so pull request checks can see them.');
+    console.log('Commit .paws.yml and .paws/ledger.jsonl so pull request checks can see them.');
     return;
   }
 
   if (cmd === 'check' || cmd === 'rules') {
     const policy = loadPolicy(process.cwd());
     if (!policy) {
-      console.log('No .aiguard.yml found here or in any parent folder. Run "aiguard init".');
+      console.log('No .paws.yml found here or in any parent folder. Run "paws init".');
       process.exitCode = 1;
       return;
     }
@@ -207,20 +213,23 @@ async function main() {
       const r = redact.redactText(readStdin(), { types, allowEmails, vault });
       vault.save();
       process.stdout.write(r.text);
-      if (r.count) process.stdout.write(`\n[AI Guard redacted ${r.count} value(s) in this output]\n`);
+      if (r.count) process.stdout.write(`\n[Paws redacted ${r.count} value(s) in this output]\n`);
       return;
     }
     const files = args.filter((a) => !a.startsWith('--') && a !== argValue(args, '--root'));
     if (!files.length) return usage();
     let total = 0;
     const { extractText, isDocument } = require('../lib/extract');
+    const mode = args.includes('--fake') || (policy && policy.redact && policy.redact.mode === 'fake') ? 'fake' : 'placeholder';
+    // Use a temporary vault so each unique value gets a distinct stand-in.
+    const vault = cmd === 'redact' ? new redact.Vault(policy ? policy.root : root) : null;
     for (const f of files) {
       const text = isDocument(f) ? extractText(path.resolve(f)) : fs.readFileSync(f, 'utf8');
       if (text === null) {
         console.log(`${f}: can't read this document type here`);
         continue;
       }
-      const r = redact.redactText(text, { types, allowEmails, filePath: f, mode: args.includes('--fake') || (policy && policy.redact && policy.redact.mode === 'fake') ? 'fake' : 'placeholder' });
+      const r = redact.redactText(text, { types, allowEmails, filePath: f, mode, vault });
       total += r.count;
       if (cmd === 'redact') process.stdout.write(r.text);
       else {
@@ -228,6 +237,7 @@ async function main() {
         console.log(`${f}: ${r.count ? what : 'nothing found'}`);
       }
     }
+    if (vault) vault.save();
     if (cmd === 'scan') process.exitCode = total ? 3 : 0;
     return;
   }
@@ -235,7 +245,7 @@ async function main() {
   if (cmd === 'sync') {
     const policy = loadPolicy(process.cwd());
     if (!policy) {
-      console.log('No .aiguard.yml found. Run "aiguard init".');
+      console.log('No .paws.yml found. Run "paws init".');
       process.exitCode = 1;
       return;
     }
@@ -253,20 +263,24 @@ async function main() {
     const base = `http://127.0.0.1:${g.port}`;
     const mode = g.policy.redact.mode === 'fake' ? 'realistic fakes' : 'placeholders';
     if (cmd === 'gateway') {
-      console.log(`AI Guard agent running on ${base} (this machine only), forwarding to ${g.upstream}.`);
+      console.log(`Paws agent running on ${base} (this machine only), forwarding to ${g.upstream}.`);
       console.log(`Redaction: ${g.policy.redact.enabled ? 'on' : 'off'}, ${mode}.`);
-      console.log(`\nPoint Claude Code at it:\n  export ANTHROPIC_BASE_URL=${base}\n  claude\n\nWatch it work:  aiguard ui\nPress Ctrl+C to stop.`);
+      console.log(`\nPoint Claude Code at it:\n  export ANTHROPIC_BASE_URL=${base}\n  claude\n\nWatch it work:  paws ui\nPress Ctrl+C to stop.`);
       return new Promise(() => {});
     }
     const command = args.filter((a, i) => !(a === '--upstream' || args[i - 1] === '--upstream'));
     if (!command.length) {
-      console.error('Usage: aiguard run <command...>   e.g. aiguard run claude');
+      console.error('Usage: paws run <command...>   e.g. paws run claude');
       g.server.close();
       process.exitCode = 1;
       return;
     }
-    console.error(`AI Guard agent on ${base}: redacting (${mode}) before anything leaves this machine.`);
-    const child = require('child_process').spawn(command[0], command.slice(1), { stdio: 'inherit', env: { ...process.env, ANTHROPIC_BASE_URL: base } });
+    console.error(`Paws agent on ${base}: redacting (${mode}) before anything leaves this machine.`);
+    const toolEnv = { ...process.env, ANTHROPIC_BASE_URL: base };
+    // Tools that speak the OpenAI Chat Completions API need OPENAI_BASE_URL instead.
+    const OPENAI_TOOLS = new Set(['codex', 'aider']);
+    if (OPENAI_TOOLS.has(command[0])) toolEnv.OPENAI_BASE_URL = base;
+    const child = require('child_process').spawn(command[0], command.slice(1), { stdio: 'inherit', env: toolEnv });
     child.on('exit', (code) => {
       g.server.close();
       process.exit(code === null ? 1 : code);
@@ -284,7 +298,7 @@ async function main() {
       else throw e;
     }
     const how = args.includes('--no-window') ? 'none' : openCornerWindow(p.url);
-    console.log(`AI Guard pop-up running${how === 'window' ? ' in the corner of your screen' : ''}. Link (this machine only):\n  ${p.url}\nPress Ctrl+C to stop.`);
+    console.log(`Paws pop-up running${how === 'window' ? ' in the corner of your screen' : ''}. Link (this machine only):\n  ${p.url}\nPress Ctrl+C to stop.`);
     return new Promise(() => {});
   }
 
@@ -298,7 +312,7 @@ async function main() {
       if (e.code === 'EADDRINUSE') started = await startServer({ root: process.cwd(), port: 0 });
       else throw e;
     }
-    console.log(`AI Guard dashboard (only reachable from this machine):\n  ${started.url}\nPress Ctrl+C to stop.`);
+    console.log(`Paws dashboard (only reachable from this machine):\n  ${started.url}\nPress Ctrl+C to stop.`);
     if (!args.includes('--no-open')) {
       const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
       const openArgs = process.platform === 'win32' ? ['/c', 'start', '', started.url] : [started.url];
@@ -338,12 +352,79 @@ async function main() {
     return;
   }
 
+  if (cmd === 'sessions') {
+    const store = require('../lib/store');
+    if (!store.available()) {
+      console.log('Sessions need Node 22.5+ (built-in SQLite).');
+      process.exitCode = 1;
+      return;
+    }
+    const sessions = store.listSessions();
+    if (!sessions.length) {
+      console.log('No sessions recorded yet.');
+      return;
+    }
+    console.log('Recent sessions:\n');
+    for (const s of sessions) {
+      const repo = path.basename(s.root);
+      const started = new Date(s.started).toLocaleString();
+      const id = (s.session || 'unknown').slice(0, 12);
+      console.log(`  ${id}  ${repo.padEnd(20)} ${String(s.events).padStart(3)} events  ${started}`);
+    }
+    return;
+  }
+
+  if (cmd === 'clear') {
+    const store = require('../lib/store');
+    if (!store.available()) {
+      console.log('Clear needs Node 22.5+ (built-in SQLite).');
+      process.exitCode = 1;
+      return;
+    }
+    const sessionId = argValue(args, '--session');
+    const olderThan = argValue(args, '--older-than');
+    const policy = loadPolicy(process.cwd());
+    const root = policy ? policy.root : process.cwd();
+
+    if (args.includes('--all')) {
+      const rid = require('../lib/redact').rootId(root);
+      const ev = store.clearOlderThan(0);
+      const vt = store.clearVault(rid);
+      console.log(`Cleared ${ev} events and ${vt} vault entries for ${path.basename(root)}.`);
+      return;
+    }
+    if (sessionId) {
+      const n = store.clearSession(sessionId);
+      console.log(`Cleared ${n} events for session ${sessionId.slice(0, 12)}.`);
+      return;
+    }
+    if (olderThan) {
+      const days = Number(olderThan);
+      if (isNaN(days) || days < 0) {
+        console.error('--older-than needs a number of days.');
+        process.exitCode = 1;
+        return;
+      }
+      const n = store.clearOlderThan(days);
+      console.log(`Cleared ${n} events older than ${days} day${days === 1 ? '' : 's'}.`);
+      return;
+    }
+    if (args.includes('--vault')) {
+      const rid = require('../lib/redact').rootId(root);
+      const n = store.clearVault(rid);
+      console.log(`Cleared ${n} vault entries for ${path.basename(root)}. New stand-ins will be assigned on next use.`);
+      return;
+    }
+    console.log('Usage: paws clear --session <id> | --older-than <days> | --vault | --all');
+    return;
+  }
+
   console.error(`Unknown command "${cmd}".`);
   usage();
   process.exitCode = 1;
 }
 
 main().catch((e) => {
-  console.error(`AI Guard: ${e.message}`);
+  console.error(`Paws: ${e.message}`);
   process.exitCode = 1;
 });

@@ -1,14 +1,36 @@
 {
-  "name": "aiguard",
+  "name": "paws-guard",
   "version": "0.1.0",
-  "description": "Keep AI coding tools away from files that need a human: blocks or asks before AI edits, checks pull requests, and keeps a tamper-evident log.",
-  "bin": { "aiguard": "bin/aiguard.js" },
+  "description": "Keep AI coding tools away from your sensitive data. One policy file controls what AI can read and edit. Personal data is redacted on your machine before any AI sees it.",
+  "bin": { "paws": "bin/paws.js" },
   "main": "lib/policy.js",
   "scripts": {
     "test": "node --test test/*.test.js",
     "sync-extension": "node scripts/sync-extension.js"
   },
-  "engines": { "node": ">=18" },
-  "license": "UNLICENSED",
-  "private": true
+  "engines": { "node": ">=22.5.0" },
+  "license": "MIT",
+  "keywords": [
+    "ai", "security", "privacy", "redaction", "pii", "claude", "codex",
+    "copilot", "cursor", "guard", "policy", "audit", "compliance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/developerannaliese/paws.git"
+  },
+  "homepage": "https://mdkt.dev/paws",
+  "bugs": {
+    "url": "https://github.com/developerannaliese/paws/issues"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "hooks/",
+    ".claude-plugin/",
+    "action.yml",
+    "examples/",
+    "LICENSE",
+    "README.md",
+    "PRIVACY.md"
+  ]
 }

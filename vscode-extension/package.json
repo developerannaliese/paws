@@ -1,9 +1,9 @@
 {
-  "name": "aiguard-vscode",
-  "displayName": "AI Guard",
-  "description": "See what AI Guard did in each AI session, which files AI tools can't touch, and get a pop-up when it stops something.",
+  "name": "paws-vscode",
+  "displayName": "Paws",
+  "description": "See what Paws did in each AI session, which files AI tools can't touch, and get a pop-up when it stops something.",
   "version": "0.1.0",
-  "publisher": "aiguard",
+  "publisher": "paws",
   "license": "UNLICENSED",
   "engines": {
     "vscode": "^1.85.0"
@@ -13,37 +13,37 @@
   ],
   "main": "./extension.js",
   "activationEvents": [
-    "workspaceContains:.aiguard.yml",
-    "workspaceContains:.aiguard.yaml",
-    "workspaceContains:.aiguard.json"
+    "workspaceContains:.paws.yml",
+    "workspaceContains:.paws.yaml",
+    "workspaceContains:.paws.json"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "aiguard.openSessions",
-        "title": "AI Guard: Show sessions"
+        "command": "paws.openSessions",
+        "title": "Paws: Show sessions"
       },
       {
-        "command": "aiguard.showRules",
-        "title": "AI Guard: Show protected files"
+        "command": "paws.showRules",
+        "title": "Paws: Show protected files"
       },
       {
-        "command": "aiguard.checkFile",
-        "title": "AI Guard: Check this file"
+        "command": "paws.checkFile",
+        "title": "Paws: Check this file"
       },
       {
-        "command": "aiguard.verifyLog",
-        "title": "AI Guard: Verify edit log"
+        "command": "paws.verifyLog",
+        "title": "Paws: Verify edit log"
       },
       {
-        "command": "aiguard.init",
-        "title": "AI Guard: Create policy and install Claude Code hooks"
+        "command": "paws.init",
+        "title": "Paws: Create policy and install Claude Code hooks"
       }
     ],
     "configuration": {
-      "title": "AI Guard",
+      "title": "Paws",
       "properties": {
-        "aiguard.popups": {
+        "paws.popups": {
           "type": "string",
           "enum": [
             "important",
@@ -52,11 +52,11 @@
           ],
           "default": "important",
           "enumDescriptions": [
-            "Pop up when AI Guard stops something or needs your approval",
+            "Pop up when Paws stops something or needs your approval",
             "Also pop up when values are swapped",
             "Never pop up"
           ],
-          "description": "When AI Guard should pop up a notification."
+          "description": "When Paws should pop up a notification."
         }
       }
     }

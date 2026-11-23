@@ -7,6 +7,7 @@
 const { execFileSync } = require('child_process');
 
 const DOC_TYPES = ['.pdf', '.docx'];
+const IMAGE_TYPES = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.heic', '.heif'];
 
 function decodeXml(s) {
   return s
@@ -42,4 +43,35 @@ function isDocument(p) {
   return DOC_TYPES.some((ext) => lower.endsWith(ext));
 }
 
-module.exports = { extractText, isDocument, DOC_TYPES };
+function isImage(p) {
+  const lower = String(p).toLowerCase();
+  return IMAGE_TYPES.some((ext) => lower.endsWith(ext));
+}
+
+// macOS Vision OCR: extract text from an image using the system's built-in OCR.
+// Returns null if not on macOS or if recognition fails.
+function ocrImage(absPath) {
+  if (process.platform !== 'darwin') return null;
+  try {
+    // Use macOS Vision framework via a Swift one-liner through osascript
+    const script = `
+      import Vision
+      import Foundation
+      let url = URL(fileURLWithPath: ${JSON.stringify(absPath)})
+      guard let img = CGImageSourceCreateWithURL(url as CFURL, nil),
+            let cgImg = CGImageSourceCreateImageAtIndex(img, 0, nil) else { exit(1) }
+      let req = VNRecognizeTextRequest()
+      req.recognitionLevel = .accurate
+      try VNImageRequestHandler(cgImage: cgImg).perform([req])
+      let text = (req.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\\n")
+      print(text)
+    `;
+    return execFileSync('swift', ['-e', script], {
+      encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 8 * 1024 * 1024,
+    }).trim() || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+module.exports = { extractText, isDocument, isImage, ocrImage, DOC_TYPES, IMAGE_TYPES };

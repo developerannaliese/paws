@@ -1,25 +1,25 @@
-# What AI Guard stores, and where
+# What Paws stores, and where
 
-Short version: **everything stays on the laptop. We (the makers of AI Guard) store nothing and receive nothing.**
+Short version: **everything stays on the laptop. We (the makers of Paws) store nothing and receive nothing.**
 
 ## On the laptop
 
 | What | Where | Contains |
 | --- | --- | --- |
-| Local database | `~/.aiguard/aiguard.db` (readable only by the user) | The vault: each real value encrypted with AES-256-GCM, next to the stand-in the AI saw. Activity: counts, value types, file names, session IDs, times. Never values |
-| Encryption key | `~/.aiguard/key` (readable only by the user), or `AIGUARD_KEY` | 32 random bytes made on first run. Never sent anywhere |
-| Redacted copies | `~/.aiguard/cache/` | The stand-in versions of files Claude Code reads, so the AI can open them |
+| Local database | `~/.paws/paws.db` (readable only by the user) | The vault: each real value encrypted with AES-256-GCM, next to the stand-in the AI saw. Activity: counts, value types, file names, session IDs, times. Never values |
+| Encryption key | `~/.paws/key` (readable only by the user), or `PAWS_KEY` | 32 random bytes made on first run. Never sent anywhere |
+| Redacted copies | `~/.paws/cache/` | The stand-in versions of files Claude Code reads, so the AI can open them |
 
 ## In the repo
 
 | What | Contains |
 | --- | --- |
-| `.aiguard.yml` | The policy |
-| `.aiguard/ledger.jsonl` | Hash-chained edit log: which tool and session touched which protected file, and value counts. Never values. Goes to the pull request check |
+| `.paws.yml` | The policy |
+| `.paws/ledger.jsonl` | Hash-chained edit log: which tool and session touched which protected file, and value counts. Never values. Goes to the pull request check |
 
 ## Network connections
 
-AI Guard opens exactly these, and a test fails if another is added:
+Paws opens exactly these, and a test fails if another is added:
 
 | Connection | When | What's sent |
 | --- | --- | --- |
@@ -32,10 +32,10 @@ There is **no telemetry, no crash reporting, no update check and no account**. T
 
 ## What the AI provider still sees
 
-The AI tool still sends your code and prompts to its provider, as it always has. AI Guard changes **what's in it**: real names, emails, phone numbers, TFNs, account numbers, secrets and similar values become stand-ins first. Files marked `ai_read: block` aren't sent at all.
+The AI tool still sends your code and prompts to its provider, as it always has. Paws changes **what's in it**: real names, emails, phone numbers, TFNs, account numbers, secrets and similar values become stand-ins first. Files marked `ai_read: block` aren't sent at all.
 
-Detection is good but not perfect. Labelled, tabled and previously seen values are caught reliably; names written loosely in prose need the optional local model. Use `AIGUARD_GATEWAY_DUMP=sent.jsonl` to see exactly what left the laptop in any session.
+Detection is good but not perfect. Labelled, tabled and previously seen values are caught reliably; names written loosely in prose need the optional local model. Use `PAWS_GATEWAY_DUMP=sent.jsonl` to see exactly what left the laptop in any session.
 
 ## Deleting everything
 
-Delete `~/.aiguard`. Stand-ins already in AI conversations can then never be turned back into real values.
+Delete `~/.paws`. Stand-ins already in AI conversations can then never be turned back into real values.

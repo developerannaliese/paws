@@ -1,13 +1,13 @@
 'use strict';
 
-// The local database: one SQLite file on this machine (~/.aiguard/aiguard.db),
+// The local database: one SQLite file on this machine (~/.paws/paws.db),
 // using the SQLite built into Node, so nothing extra is installed and nothing is
 // hosted anywhere.
 //
 //  - vault:   real value <-> stand-in. Real values are encrypted (AES-256-GCM)
 //             with a key kept on this machine; lookups use a keyed hash, so the
 //             file never holds a readable real value.
-//  - events:  what AI Guard did (counts, file names, sessions), never values.
+//  - events:  what Paws did (counts, file names, sessions), never values.
 //
 // Several processes (Claude Code hooks, the local agent, the pop-up) share it
 // safely: writes happen inside transactions and readers pick up new rows.
@@ -39,11 +39,11 @@ const open = new Map();
 
 function homeDir(env) {
   const os = require('os');
-  return (env && env.AIGUARD_HOME) || process.env.AIGUARD_HOME || path.join(os.homedir(), '.aiguard');
+  return (env && env.PAWS_HOME) || process.env.PAWS_HOME || path.join(os.homedir(), '.paws');
 }
 
 function loadKey(home, env) {
-  const fromEnv = (env && env.AIGUARD_KEY) || process.env.AIGUARD_KEY;
+  const fromEnv = (env && env.PAWS_KEY) || process.env.PAWS_KEY;
   if (fromEnv) return Buffer.from(fromEnv, 'hex');
   const file = path.join(home, 'key');
   try {
@@ -61,7 +61,7 @@ function db(env) {
   const mod = sqlite();
   if (!mod) return null;
   fs.mkdirSync(home, { recursive: true, mode: 0o700 });
-  const file = path.join(home, 'aiguard.db');
+  const file = path.join(home, 'paws.db');
   const isNew = !fs.existsSync(file);
   const conn = new mod.DatabaseSync(file);
   if (isNew) fs.chmodSync(file, 0o600);
@@ -119,4 +119,37 @@ function recentEvents({ sinceId = 0, limit = 200 } = {}, env) {
     .map((r) => ({ ...r, found: r.found ? JSON.parse(r.found) : null }));
 }
 
-module.exports = { available, db, encrypt, decrypt, keyHash, recordEvent, recentEvents, homeDir };
+function clearSession(sessionId, env) {
+  const h = db(env);
+  if (!h) return 0;
+  const info = h.conn.prepare('DELETE FROM events WHERE session = ?').run(sessionId);
+  return info.changes;
+}
+
+function clearOlderThan(days, env) {
+  const h = db(env);
+  if (!h) return 0;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const info = h.conn.prepare('DELETE FROM events WHERE ts < ?').run(cutoff);
+  return info.changes;
+}
+
+function clearVault(rootId, env) {
+  const h = db(env);
+  if (!h) return 0;
+  const v = h.conn.prepare('DELETE FROM vault WHERE root_id = ?').run(rootId);
+  const c = h.conn.prepare('DELETE FROM counters WHERE root_id = ?').run(rootId);
+  return v.changes + c.changes;
+}
+
+function listSessions(env) {
+  const h = db(env);
+  if (!h) return [];
+  return h.conn.prepare(`
+    SELECT session, root, MIN(ts) as started, MAX(ts) as last_active, COUNT(*) as events
+    FROM events WHERE session IS NOT NULL
+    GROUP BY session ORDER BY last_active DESC LIMIT 50
+  `).all();
+}
+
+module.exports = { available, db, encrypt, decrypt, keyHash, recordEvent, recentEvents, homeDir, clearSession, clearOlderThan, clearVault, listSessions };

@@ -3,7 +3,7 @@
 // The session view. One page used two ways:
 //  - inside VS Code / Cursor / Windsurf as a panel (webview), where it takes the
 //    editor's own colours and fonts, so it looks native;
-//  - in a browser via `aiguard ui`, with an editor-like theme of its own.
+//  - in a browser via `paws ui`, with an editor-like theme of its own.
 // No outside requests: no web fonts, no scripts from the internet.
 
 function page({ token = '', webview = false, cspSource = '', nonce = '', root = '' } = {}) {
@@ -16,7 +16,7 @@ function page({ token = '', webview = false, cspSource = '', nonce = '', root = 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${csp}
-<title>AI Guard</title>
+<title>Paws</title>
 <style>
 /* Layout: a slim header with the session picker, a one-line summary of the session,
    then tabs (Activity / What the AI saw / Rules). Wide windows get a session list on the left. */
@@ -120,13 +120,13 @@ code { background: var(--code-bg); padding: 0 4px; border-radius: 3px; overflow-
 <body>
 <div class="app">
   <aside aria-label="Sessions">
-    <div class="brand">${shield()}AI Guard <span class="repo" id="repo"></span></div>
+    <div class="brand">${shield()}Paws <span class="repo" id="repo"></span></div>
     <div class="label">Sessions</div>
     <ul class="slist" id="slist"></ul>
     <div class="foot"><span id="mode"></span><span id="logline"></span><span>On this machine only · nothing stored by us</span></div>
   </aside>
   <main>
-    <div class="top">${shield()}<strong>AI Guard</strong><select id="spick" aria-label="Session"></select></div>
+    <div class="top">${shield()}<strong>Paws</strong><select id="spick" aria-label="Session"></select></div>
     <section>
       <h1 id="title"></h1>
       <p class="summary" id="summary"></p>
@@ -202,7 +202,7 @@ code { background: var(--code-bg); padding: 0 4px; border-radius: 3px; overflow-
     if (st.asked) parts.push("asked you to approve <b>" + st.asked + "</b>");
     if (!parts.length) return "Nothing needed guarding in this session.";
     var text = parts.join(", ");
-    return "AI Guard " + text.replace(/, ([^,]*)$/, " and $1") + ".";
+    return "Paws " + text.replace(/, ([^,]*)$/, " and $1") + ".";
   }
 
   function render() {
@@ -248,7 +248,7 @@ code { background: var(--code-bg); padding: 0 4px; border-radius: 3px; overflow-
       var k = ru.ai_read === "block" ? "hidden" : ru.ai_read === "redact" ? "redact" : ru.ai_edit;
       var t = { hidden: "Hidden from AI", redact: "Always swapped", block: "No AI edits", review: "Needs " + (ru.reviewers || 1) + " approval" + ((ru.reviewers || 1) === 1 ? "" : "s"), warn: "Flagged", allow: "Allowed" }[k];
       return '<li><code>' + esc(ru.path) + '</code><span class="tag ' + esc(k) + '">' + esc(t) + "</span></li>";
-    }).join("") : '<li class="empty">No rules yet. Run aiguard init.</li>';
+    }).join("") : '<li class="empty">No rules yet. Run paws init.</li>';
     $("lognote").textContent = (state.log.intact ? "The edit log is intact" : "The edit log is broken") + " (" + plural(state.log.entries, "entry").replace("entrys", "entries") + "). Each entry is chained by hash, so changing a past one shows up here and fails the pull request check.";
   }
 
@@ -260,11 +260,11 @@ code { background: var(--code-bg); padding: 0 4px; border-radius: 3px; overflow-
   }
   function refresh() {
     if (vscode) { vscode.postMessage({ type: "state" }); return; }
-    fetch("/api/state" + Q, { headers: { "x-aiguard-token": TOKEN } }).then(function (r) { return r.text(); }).then(received).catch(function () {});
+    fetch("/api/state" + Q, { headers: { "x-paws-token": TOKEN } }).then(function (r) { return r.text(); }).then(received).catch(function () {});
   }
   function askReveal(standIn) {
     if (vscode) { vscode.postMessage({ type: "reveal", standIn: standIn }); return; }
-    fetch("/api/reveal" + Q, { method: "POST", headers: { "x-aiguard-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ standIn: standIn }) })
+    fetch("/api/reveal" + Q, { method: "POST", headers: { "x-paws-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ standIn: standIn }) })
       .then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) showRevealed(j.standIn, j.value); });
   }
   function showRevealed(standIn, value) {
