@@ -93,7 +93,7 @@ A GitHub Action detects AI-written changes (commit trailers, bot accounts, edit 
 
 ```yaml
 # .github/workflows/pawsoff.yml
-- uses: developerannaliese/paws@main
+- uses: developerannaliese/pawsoff@main
 ```
 
 ## Commands

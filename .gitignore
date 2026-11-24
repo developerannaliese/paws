@@ -3,3 +3,4 @@ node_modules/
 *.log
 .pawsoff/
 ~/.pawsoff/
+test/stress.test.js
