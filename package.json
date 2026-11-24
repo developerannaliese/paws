@@ -1,8 +1,8 @@
 {
-  "name": "paws-guard",
+  "name": "pawsoff",
   "version": "0.1.0",
   "description": "Keep AI coding tools away from your sensitive data. One policy file controls what AI can read and edit. Personal data is redacted on your machine before any AI sees it.",
-  "bin": { "paws": "bin/paws.js" },
+  "bin": { "pawsoff": "bin/pawsoff.js" },
   "main": "lib/policy.js",
   "scripts": {
     "test": "node --test test/*.test.js",
@@ -18,7 +18,7 @@
     "type": "git",
     "url": "git+https://github.com/developerannaliese/paws.git"
   },
-  "homepage": "https://mdkt.dev/paws",
+  "homepage": "https://mdkt.dev/pawsoff",
   "bugs": {
     "url": "https://github.com/developerannaliese/paws/issues"
   },

@@ -17,7 +17,7 @@ const { sync, claudeReadRule } = require('../lib/sync');
 const redact = require('../lib/redact');
 
 // Keep the redaction vault and cache out of the real home folder.
-process.env.PAWS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'paws-home-'));
+process.env.PAWSOFF_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'pawsoff-home-'));
 const ledger = require('../lib/ledger');
 const { prCheck, aiSignals } = require('../lib/pr-check');
 
@@ -44,12 +44,12 @@ rules:
 `;
 
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'paws-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'pawsoff-'));
 }
 
 function repoWithPolicy(text = POLICY) {
   const dir = tmpDir();
-  fs.writeFileSync(path.join(dir, '.paws.yml'), text);
+  fs.writeFileSync(path.join(dir, '.pawsoff.yml'), text);
   return dir;
 }
 
@@ -89,8 +89,8 @@ test('the most restrictive rule wins, and the guard protects itself', () => {
   assert.strictEqual(decide(p, 'payments/legacy/old.js').reviewers, 2);
   assert.strictEqual(decide(p, 'db/migrations/001.sql').action, 'warn');
   assert.strictEqual(decide(p, 'src/app.ts').action, 'allow');
-  assert.strictEqual(decide(p, '.paws.yml').action, 'block');
-  assert.strictEqual(decide(p, '.paws/ledger.jsonl').action, 'block');
+  assert.strictEqual(decide(p, '.pawsoff.yml').action, 'block');
+  assert.strictEqual(decide(p, '.pawsoff/ledger.jsonl').action, 'block');
 });
 
 test('hook blocks, asks, warns or stays quiet', () => {
@@ -115,7 +115,7 @@ test('hook blocks, asks, warns or stays quiet', () => {
   const outside = hook(dir, { tool_name: 'Edit', tool_input: { file_path: '/etc/hosts' } });
   assert.strictEqual(outside.stdout, '');
 
-  const self = hook(dir, { tool_name: 'Edit', tool_input: { file_path: path.join(dir, '.paws.yml') } });
+  const self = hook(dir, { tool_name: 'Edit', tool_input: { file_path: path.join(dir, '.pawsoff.yml') } });
   assert.strictEqual(self.json.hookSpecificOutput.permissionDecision, 'deny');
 
   const nb = hook(dir, { tool_name: 'NotebookEdit', tool_input: { notebook_path: path.join(dir, 'payments/model.ipynb') } });
@@ -210,7 +210,7 @@ test('sync copies hidden rules into each AI tool\'s ignore settings, safely', ()
   sync(policy);
   const cursor = fs.readFileSync(path.join(dir, '.cursorignore'), 'utf8');
   assert.match(cursor, /^node_modules\/\n/, 'keeps what was there');
-  assert.strictEqual((cursor.match(/>>> paws/g) || []).length, 1, 'one managed block after two syncs');
+  assert.strictEqual((cursor.match(/>>> pawsoff/g) || []).length, 1, 'one managed block after two syncs');
   assert.match(cursor, /secrets\/\*\*\ncustomers\.csv/);
   assert.ok(fs.existsSync(path.join(dir, '.aiexclude')) && fs.existsSync(path.join(dir, '.codeiumignore')));
   const deny = JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8')).permissions.deny;
@@ -391,7 +391,7 @@ test('papers and documents: PDF and Word files are redacted as text before the A
 test('CLI: scan and redact show what an AI would see', () => {
   const dir = tmpDir();
   write(dir, 'c.txt', SAMPLE);
-  const cli = path.join(__dirname, '..', 'bin', 'paws.js');
+  const cli = path.join(__dirname, '..', 'bin', 'pawsoff.js');
   let scan;
   try {
     execFileSync('node', [cli, 'scan', 'c.txt'], { cwd: dir, encoding: 'utf8' });
@@ -457,14 +457,14 @@ test('PR check: AI change to a blocked file fails; to a review file needs approv
 
 test('PR check: a pull request cannot loosen its own policy', async () => {
   const { dir, base } = gitRepo();
-  write(dir, '.paws.yml', 'rules: []\n');
+  write(dir, '.pawsoff.yml', 'rules: []\n');
   write(dir, '.github/workflows/ci.yml', 'on: push\n');
   g(dir, 'add', '-A');
   g(dir, 'commit', '-qm', 'Loosen\n\nCo-Authored-By: Claude <noreply@anthropic.com>');
   const res = await prCheck({ cwd: dir, base, env: {}, reportOnly: true });
   assert.strictEqual(res.ok, false);
   const paths = res.evidence.decisions.map((d) => d.path).sort();
-  assert.deepStrictEqual(paths, ['.github/workflows/ci.yml', '.paws.yml']);
+  assert.deepStrictEqual(paths, ['.github/workflows/ci.yml', '.pawsoff.yml']);
 });
 
 test('PR check: edit log shows AI edits even when the commit looks human', async () => {
@@ -533,7 +533,7 @@ test('PR check: counts fresh human approvals from the GitHub API', async () => {
 
 test('CLI: init, check, rules and verify-log work', () => {
   const dir = tmpDir();
-  const cli = path.join(__dirname, '..', 'bin', 'paws.js');
+  const cli = path.join(__dirname, '..', 'bin', 'pawsoff.js');
   const run = (...a) => {
     try {
       return { code: 0, out: execFileSync('node', [cli, ...a], { cwd: dir, encoding: 'utf8' }) };
@@ -542,11 +542,11 @@ test('CLI: init, check, rules and verify-log work', () => {
     }
   };
   const initOut = run('init', '--claude').out;
-  assert.match(initOut, /Created .paws.yml/);
+  assert.match(initOut, /Created .pawsoff.yml/);
   assert.match(initOut, /Hid 2 path\(s\)/);
   assert.match(run('check', 'secrets/a.pem').out, /hidden from AI/);
   const settings = JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'));
-  assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /paws\.js" hook$/);
+  assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /pawsoff\.js" hook$/);
   run('init', '--claude');
   const again = JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'));
   assert.strictEqual(again.hooks.PreToolUse.length, 1, 'init is safe to run twice');
@@ -624,7 +624,7 @@ test('editor extension marks protected files, warns on edits, pops up and opens 
     changeHandler({ document: { uri: uri(path.join(dir, 'payments/x.ts')) }, contentChanges: [{}] });
     changeHandler({ document: { uri: uri(path.join(dir, 'payments/x.ts')) }, contentChanges: [{}] });
     assert.strictEqual(messages.filter((m) => /x\.ts is protected/.test(m)).length, 1, 'warns once per file');
-    commands['paws.verifyLog']();
+    commands['pawsoff.verifyLog']();
     assert.match(messages[messages.length - 1], /intact/);
     assert.strictEqual(api.decisionFor(uri(path.join(dir, '.env'))).action, 'block');
     assert.strictEqual(provider.provideFileDecoration(uri(path.join(dir, 'secrets/prod.pem'))).badge, 'H');
@@ -633,11 +633,11 @@ test('editor extension marks protected files, warns on edits, pops up and opens 
     hook(dir, { session_id: 'sess-9', tool_name: 'Read', tool_input: { file_path: path.join(dir, 'secrets/prod.pem') } });
     api.checkLog(dir);
     await new Promise((r) => setTimeout(r, 1700));
-    assert.ok(messages.some((m) => m === 'Paws stopped the AI reading secrets/prod.pem.'), messages.join(' | '));
-    assert.strictEqual(api.popupText([{ event: 'gateway_redacted', found: { EMAIL: 2, NAME: 1 } }]).text, 'Paws swapped 3 values before the AI saw them.');
+    assert.ok(messages.some((m) => m === 'PawsOff stopped the AI reading secrets/prod.pem.'), messages.join(' | '));
+    assert.strictEqual(api.popupText([{ event: 'gateway_redacted', found: { EMAIL: 2, NAME: 1 } }]).text, 'PawsOff swapped 3 values before the AI saw them.');
 
     // The session panel shows that session's activity.
-    commands['paws.openSessions']('sess-9');
+    commands['pawsoff.openSessions']('sess-9');
     assert.match(webview.html, /script-src 'nonce-[0-9a-f]+'/);
     webview.handler({ type: 'state' });
     const state = JSON.parse(webview.posted.find((m) => m.type === 'state').json);
@@ -660,7 +660,7 @@ test('dashboard: local only, needs the launch token, grouped by session, reveals
   try {
     const base = `http://127.0.0.1:${port}`;
     assert.strictEqual((await fetch(`${base}/api/state`)).status, 403, 'no token, no data');
-    const state = await (await fetch(`${base}/api/state`, { headers: { 'x-paws-token': token } })).json();
+    const state = await (await fetch(`${base}/api/state`, { headers: { 'x-pawsoff-token': token } })).json();
     assert.deepStrictEqual(state.sessions.map((s) => s.id).sort(), ['s1', 's2']);
     const s1 = state.sessions.find((s) => s.id === 's1');
     assert.strictEqual(s1.stats.replaced, 1);
@@ -671,7 +671,7 @@ test('dashboard: local only, needs the launch token, grouped by session, reveals
     assert.deepStrictEqual(s1.mapping[0].seenIn, ['data/c.txt']);
     const page = await (await fetch(`${base}/?t=${token}`)).text();
     assert.match(page, /What the AI saw/);
-    const rev = await (await fetch(`${base}/api/reveal`, { method: 'POST', headers: { 'x-paws-token': token }, body: JSON.stringify({ standIn: s1.mapping[0].standIn }) })).json();
+    const rev = await (await fetch(`${base}/api/reveal`, { method: 'POST', headers: { 'x-pawsoff-token': token }, body: JSON.stringify({ standIn: s1.mapping[0].standIn }) })).json();
     assert.strictEqual(rev.value, 'jane.citizen@gmail.com');
   } finally {
     server.close();
@@ -790,7 +790,7 @@ test('local database: real values are encrypted, shared safely between processes
 
   // An older plain JSON vault is moved in and deleted.
   const root2 = tmpDir();
-  const oldFile = path.join(process.env.PAWS_HOME, 'vault', `${redact.rootId(root2)}.json`);
+  const oldFile = path.join(process.env.PAWSOFF_HOME, 'vault', `${redact.rootId(root2)}.json`);
   fs.mkdirSync(path.dirname(oldFile), { recursive: true });
   fs.writeFileSync(oldFile, JSON.stringify({ counters: { NAME: 1 }, byKey: { 'NAME\u0000Old Person': '[NAME_1]' }, byPlaceholder: { '[NAME_1]': 'Old Person' } }));
   const migrated = new redact.Vault(root2);
@@ -798,7 +798,7 @@ test('local database: real values are encrypted, shared safely between processes
   assert.ok(!fs.existsSync(oldFile), 'the plain file is gone');
 
   // Without SQLite (older Node), a private file is used instead.
-  const fv = new redact.Vault(tmpDir(), { PAWS_STORE: 'files' });
+  const fv = new redact.Vault(tmpDir(), { PAWSOFF_STORE: 'files' });
   assert.ok(fv instanceof redact.FileVault);
 });
 
@@ -824,7 +824,7 @@ test('privacy: the only outside connections are the AI provider (via the agent) 
   };
   const NET = /require\(['"](?:node:)?(?:http|https|http2|net|tls|dgram|dns)['"]\)|\bfetch\(|\bWebSocket\b|\bXMLHttpRequest\b|sendBeacon/;
   const root = path.join(__dirname, '..');
-  const files = ['bin/paws.js', 'vscode-extension/extension.js', ...fs.readdirSync(path.join(root, 'lib')).map((f) => 'lib/' + f)];
+  const files = ['bin/pawsoff.js', 'vscode-extension/extension.js', ...fs.readdirSync(path.join(root, 'lib')).map((f) => 'lib/' + f)];
   const found = files.filter((f) => f.endsWith('.js') && !f.endsWith('-page.js') && NET.test(fs.readFileSync(path.join(root, f), 'utf8')));
   assert.deepStrictEqual(found.sort(), Object.keys(allowed).sort());
   // The pages only ever call back to the local server they came from.
@@ -856,7 +856,7 @@ test('pop-up: feed across repos, token required, only recorded repos open', asyn
   try {
     const base = 'http://127.0.0.1:' + p.port;
     assert.strictEqual((await fetch(base + '/api/feed')).status, 403);
-    const feed = await (await fetch(base + '/api/feed', { headers: { 'x-paws-token': p.token } })).json();
+    const feed = await (await fetch(base + '/api/feed', { headers: { 'x-pawsoff-token': p.token } })).json();
     assert.strictEqual(feed.current.root, dir);
     assert.strictEqual(feed.current.kept, 5);
     assert.ok(feed.today.stopped >= 1);

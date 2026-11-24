@@ -1,4 +1,4 @@
-name: Paws
+name: PawsOff
 description: Checks pull requests for AI-written changes to protected files and confirms the human approvals your policy requires.
 branding:
   icon: shield
@@ -12,17 +12,17 @@ inputs:
     default: ${{ github.token }}
   evidence-file:
     description: Where to write the evidence record
-    default: paws-evidence.json
+    default: pawsoff-evidence.json
 runs:
   using: composite
   steps:
-    - name: Check AI changes against .paws.yml
+    - name: Check AI changes against .pawsoff.yml
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        PAWS_REPORT_ONLY: ${{ inputs.report-only }}
-        PAWS_EVIDENCE: ${{ inputs.evidence-file }}
+        PAWSOFF_REPORT_ONLY: ${{ inputs.report-only }}
+        PAWSOFF_EVIDENCE: ${{ inputs.evidence-file }}
       run: |
-        args=(pr-check --evidence "$PAWS_EVIDENCE")
-        if [ "$PAWS_REPORT_ONLY" = "true" ]; then args+=(--report-only); fi
-        node "${{ github.action_path }}/bin/paws.js" "${args[@]}"
+        args=(pr-check --evidence "$PAWSOFF_EVIDENCE")
+        if [ "$PAWSOFF_REPORT_ONLY" = "true" ]; then args+=(--report-only); fi
+        node "${{ github.action_path }}/bin/pawsoff.js" "${args[@]}"

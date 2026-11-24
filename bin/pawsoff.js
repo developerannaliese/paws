@@ -10,7 +10,7 @@ const ledger = require('../lib/ledger');
 const { sync } = require('../lib/sync');
 const redact = require('../lib/redact');
 
-const SAMPLE_POLICY = `# Paws policy: which files AI coding tools may change.
+const SAMPLE_POLICY = `# PawsOff policy: which files AI coding tools may change.
 # ai_read: block   AI tools may not open, search or print these files
 # ai_read: redact  AI tools see the file with personal and confidential data blanked
 # ai_edit: allow | warn | review | block
@@ -67,35 +67,35 @@ redact:
 `;
 
 function usage() {
-  console.log(`Paws ${VERSION}: keep AI coding tools away from files that need a human.
+  console.log(`PawsOff ${VERSION}: keep AI coding tools away from files that need a human.
 
 Usage:
-  paws init [--claude]        Create .paws.yml here; --claude also installs the Claude Code hooks
-  paws check <path> [...]     Show what an AI edit to each path needs
-  paws rules                  List the rules in force
-  paws sync                   Copy hidden-file rules into Cursor, Windsurf, Gemini,
+  pawsoff init [--claude]        Create .pawsoff.yml here; --claude also installs the Claude Code hooks
+  pawsoff check <path> [...]     Show what an AI edit to each path needs
+  pawsoff rules                  List the rules in force
+  pawsoff sync                   Copy hidden-file rules into Cursor, Windsurf, Gemini,
                                  Aider and Claude Code ignore settings
-  paws scan <file> [...]      Show what personal or confidential data a file contains
-  paws redact <file> [--fake] Print the file as an AI tool would see it
-  paws hook                   Claude Code hook (reads hook JSON on stdin)
-  paws pr-check [options]     Check a pull request or a commit range
+  pawsoff scan <file> [...]      Show what personal or confidential data a file contains
+  pawsoff redact <file> [--fake] Print the file as an AI tool would see it
+  pawsoff hook                   Claude Code hook (reads hook JSON on stdin)
+  pawsoff pr-check [options]     Check a pull request or a commit range
       --base <ref> --head <ref>  Commit range (defaults come from GitHub Actions)
       --report-only              Report problems without failing
       --evidence <file>          Write the signed-off evidence record as JSON
-  paws verify-log             Check the edit log hasn't been tampered with
-  paws ui [--port 4477]       Open the local dashboard (this machine only)
-  paws popup                  Small live window in the corner of the screen, plus
+  pawsoff verify-log             Check the edit log hasn't been tampered with
+  pawsoff ui [--port 4477]       Open the local dashboard (this machine only)
+  pawsoff popup                  Small live window in the corner of the screen, plus
                                  notifications when something is stopped
-  paws gateway [--port 4480]  Run the local agent: AI traffic goes through it and
+  pawsoff gateway [--port 4480]  Run the local agent: AI traffic goes through it and
                                  real data is swapped for stand-ins before it leaves
-  paws run <command...>       Start the agent and run an AI tool through it,
-                                 e.g. paws run claude
-  paws clear [options]        Clean up local data
+  pawsoff run <command...>       Start the agent and run an AI tool through it,
+                                 e.g. pawsoff run claude
+  pawsoff clear [options]        Clean up local data
       --session <id>             Clear events for one session
       --older-than <days>        Clear events older than N days
       --vault                    Clear the vault (placeholder mappings) for this repo
       --all                      Clear everything for this repo
-  paws sessions               List recent sessions
+  pawsoff sessions               List recent sessions
 `);
 }
 
@@ -118,11 +118,11 @@ function installClaudeHooks(dir) {
   if (fs.existsSync(settingsFile)) {
     settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
   }
-  const command = `"${process.execPath}" "${path.resolve(__dirname, 'paws.js')}" hook`;
+  const command = `"${process.execPath}" "${path.resolve(__dirname, 'pawsoff.js')}" hook`;
   settings.hooks = settings.hooks || {};
   const add = (event, matcher) => {
     const list = (settings.hooks[event] = settings.hooks[event] || []);
-    const already = list.some((m) => (m.hooks || []).some((h) => String(h.command || '').includes('paws')));
+    const already = list.some((m) => (m.hooks || []).some((h) => String(h.command || '').includes('pawsoff')));
     if (!already) list.push({ matcher, hooks: [{ type: 'command', command }] });
   };
   add('PreToolUse', 'Edit|Write|MultiEdit|NotebookEdit|Bash|Read|NotebookRead|Grep|Glob|LS');
@@ -148,11 +148,11 @@ async function main() {
 
   if (cmd === 'init') {
     const dir = process.cwd();
-    const file = path.join(dir, '.paws.yml');
-    if (fs.existsSync(file)) console.log('.paws.yml already exists; leaving it as it is.');
+    const file = path.join(dir, '.pawsoff.yml');
+    if (fs.existsSync(file)) console.log('.pawsoff.yml already exists; leaving it as it is.');
     else {
       fs.writeFileSync(file, SAMPLE_POLICY);
-      console.log('Created .paws.yml with example rules. Edit the paths to match your repo.');
+      console.log('Created .pawsoff.yml with example rules. Edit the paths to match your repo.');
     }
     if (args.includes('--claude')) {
       const s = installClaudeHooks(dir);
@@ -160,14 +160,14 @@ async function main() {
     }
     const out = sync(loadPolicy(dir));
     console.log(`Hid ${out.patterns.length} path(s) from AI tools in: ${out.written.map((w) => w.file).join(', ')}.`);
-    console.log('Commit .paws.yml and .paws/ledger.jsonl so pull request checks can see them.');
+    console.log('Commit .pawsoff.yml and .pawsoff/ledger.jsonl so pull request checks can see them.');
     return;
   }
 
   if (cmd === 'check' || cmd === 'rules') {
     const policy = loadPolicy(process.cwd());
     if (!policy) {
-      console.log('No .paws.yml found here or in any parent folder. Run "paws init".');
+      console.log('No .pawsoff.yml found here or in any parent folder. Run "pawsoff init".');
       process.exitCode = 1;
       return;
     }
@@ -213,7 +213,7 @@ async function main() {
       const r = redact.redactText(readStdin(), { types, allowEmails, vault });
       vault.save();
       process.stdout.write(r.text);
-      if (r.count) process.stdout.write(`\n[Paws redacted ${r.count} value(s) in this output]\n`);
+      if (r.count) process.stdout.write(`\n[PawsOff redacted ${r.count} value(s) in this output]\n`);
       return;
     }
     const files = args.filter((a) => !a.startsWith('--') && a !== argValue(args, '--root'));
@@ -245,7 +245,7 @@ async function main() {
   if (cmd === 'sync') {
     const policy = loadPolicy(process.cwd());
     if (!policy) {
-      console.log('No .paws.yml found. Run "paws init".');
+      console.log('No .pawsoff.yml found. Run "pawsoff init".');
       process.exitCode = 1;
       return;
     }
@@ -263,19 +263,19 @@ async function main() {
     const base = `http://127.0.0.1:${g.port}`;
     const mode = g.policy.redact.mode === 'fake' ? 'realistic fakes' : 'placeholders';
     if (cmd === 'gateway') {
-      console.log(`Paws agent running on ${base} (this machine only), forwarding to ${g.upstream}.`);
+      console.log(`PawsOff agent running on ${base} (this machine only), forwarding to ${g.upstream}.`);
       console.log(`Redaction: ${g.policy.redact.enabled ? 'on' : 'off'}, ${mode}.`);
-      console.log(`\nPoint Claude Code at it:\n  export ANTHROPIC_BASE_URL=${base}\n  claude\n\nWatch it work:  paws ui\nPress Ctrl+C to stop.`);
+      console.log(`\nPoint Claude Code at it:\n  export ANTHROPIC_BASE_URL=${base}\n  claude\n\nWatch it work:  pawsoff ui\nPress Ctrl+C to stop.`);
       return new Promise(() => {});
     }
     const command = args.filter((a, i) => !(a === '--upstream' || args[i - 1] === '--upstream'));
     if (!command.length) {
-      console.error('Usage: paws run <command...>   e.g. paws run claude');
+      console.error('Usage: pawsoff run <command...>   e.g. pawsoff run claude');
       g.server.close();
       process.exitCode = 1;
       return;
     }
-    console.error(`Paws agent on ${base}: redacting (${mode}) before anything leaves this machine.`);
+    console.error(`PawsOff agent on ${base}: redacting (${mode}) before anything leaves this machine.`);
     const toolEnv = { ...process.env, ANTHROPIC_BASE_URL: base };
     // Tools that speak the OpenAI Chat Completions API need OPENAI_BASE_URL instead.
     const OPENAI_TOOLS = new Set(['codex', 'aider']);
@@ -298,7 +298,7 @@ async function main() {
       else throw e;
     }
     const how = args.includes('--no-window') ? 'none' : openCornerWindow(p.url);
-    console.log(`Paws pop-up running${how === 'window' ? ' in the corner of your screen' : ''}. Link (this machine only):\n  ${p.url}\nPress Ctrl+C to stop.`);
+    console.log(`PawsOff pop-up running${how === 'window' ? ' in the corner of your screen' : ''}. Link (this machine only):\n  ${p.url}\nPress Ctrl+C to stop.`);
     return new Promise(() => {});
   }
 
@@ -312,7 +312,7 @@ async function main() {
       if (e.code === 'EADDRINUSE') started = await startServer({ root: process.cwd(), port: 0 });
       else throw e;
     }
-    console.log(`Paws dashboard (only reachable from this machine):\n  ${started.url}\nPress Ctrl+C to stop.`);
+    console.log(`PawsOff dashboard (only reachable from this machine):\n  ${started.url}\nPress Ctrl+C to stop.`);
     if (!args.includes('--no-open')) {
       const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
       const openArgs = process.platform === 'win32' ? ['/c', 'start', '', started.url] : [started.url];
@@ -415,7 +415,7 @@ async function main() {
       console.log(`Cleared ${n} vault entries for ${path.basename(root)}. New stand-ins will be assigned on next use.`);
       return;
     }
-    console.log('Usage: paws clear --session <id> | --older-than <days> | --vault | --all');
+    console.log('Usage: pawsoff clear --session <id> | --older-than <days> | --vault | --all');
     return;
   }
 
@@ -425,6 +425,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(`Paws: ${e.message}`);
+  console.error(`PawsOff: ${e.message}`);
   process.exitCode = 1;
 });

@@ -1,10 +1,10 @@
-# Paws
+# PawsOff
 
 Keep AI coding tools away from your sensitive data.
 
-One policy file (`.paws.yml`) controls what AI tools can read and edit. Personal data is redacted on your machine before any AI sees it. Everything stays local — no server, no account, no telemetry.
+One policy file (`.pawsoff.yml`) controls what AI tools can read and edit. Personal data is redacted on your machine before any AI sees it. Everything stays local — no server, no account, no telemetry.
 
-**[Website](https://mdkt.dev/paws)** · **[Privacy](PRIVACY.md)** · **[Deploy guide](DEPLOY.md)**
+**[Website](https://mdkt.dev/pawsoff)** · **[Privacy](PRIVACY.md)** · **[Deploy guide](DEPLOY.md)**
 
 ## What it does
 
@@ -17,15 +17,15 @@ sarah.mitchell@bigpond.com.au      [EMAIL_1]
 TFN: 123 456 782                   TFN: [TFN_1]
 ```
 
-When the AI writes `[EMAIL_1]` back into an edit, Paws swaps the real value in. The AI never sees the real data, your files stay correct.
+When the AI writes `[EMAIL_1]` back into an edit, PawsOff swaps the real value in. The AI never sees the real data, your files stay correct.
 
 ## Install
 
 ```bash
-npx paws-guard init --claude
+npx pawsoff init --claude
 ```
 
-This creates `.paws.yml` with example rules, installs Claude Code hooks, and hides protected paths from other AI tools (Cursor, Windsurf, Gemini Code Assist, Aider).
+This creates `.pawsoff.yml` with example rules, installs Claude Code hooks, and hides protected paths from other AI tools (Cursor, Windsurf, Gemini Code Assist, Aider).
 
 Requires **Node.js 22.5+** (uses built-in SQLite for the encrypted local vault).
 
@@ -82,7 +82,7 @@ Claude Code hooks intercept every tool call. Reads get redacted copies. Edits to
 ### 2. The gateway agent
 
 ```bash
-paws run claude    # or: paws run codex
+pawsoff run claude    # or: pawsoff run codex
 ```
 
 Proxies all API traffic through a local agent on `127.0.0.1`. Every message, file content, and command output is scrubbed before it leaves your machine. Replies are restored before the tool acts on them. Supports both Anthropic and OpenAI API formats.
@@ -92,7 +92,7 @@ Proxies all API traffic through a local agent on `127.0.0.1`. Every message, fil
 A GitHub Action detects AI-written changes (commit trailers, bot accounts, edit log), fails the check if they touch blocked files, and requires the human approvals the policy asks for. The base branch's policy is used, so a PR can't loosen its own rules.
 
 ```yaml
-# .github/workflows/paws.yml
+# .github/workflows/pawsoff.yml
 - uses: developerannaliese/paws@main
 ```
 
@@ -100,40 +100,40 @@ A GitHub Action detects AI-written changes (commit trailers, bot accounts, edit 
 
 | Command | What it does |
 |---------|-------------|
-| `paws init [--claude]` | Create policy; `--claude` installs Claude Code hooks |
-| `paws scan <file>` | Show what PII a file contains |
-| `paws redact <file> [--fake]` | Print the file as AI would see it |
-| `paws check <path>` | Show what an AI edit needs |
-| `paws rules` | List rules in force |
-| `paws sync` | Copy hidden-file rules to all AI tools' ignore settings |
-| `paws run <cmd>` | Start gateway + run a tool through it (`claude`, `codex`, etc.) |
-| `paws gateway` | Run the gateway on its own (port 4480) |
-| `paws popup` | Live companion window with today's activity |
-| `paws ui` | Local dashboard |
-| `paws sessions` | List recent AI sessions |
-| `paws clear --session <id>` | Clear one session's data |
-| `paws clear --older-than <days>` | Clear old events |
-| `paws pr-check` | Check a pull request (in GitHub Actions) |
-| `paws verify-log` | Confirm the edit log hasn't been tampered with |
+| `pawsoff init [--claude]` | Create policy; `--claude` installs Claude Code hooks |
+| `pawsoff scan <file>` | Show what PII a file contains |
+| `pawsoff redact <file> [--fake]` | Print the file as AI would see it |
+| `pawsoff check <path>` | Show what an AI edit needs |
+| `pawsoff rules` | List rules in force |
+| `pawsoff sync` | Copy hidden-file rules to all AI tools' ignore settings |
+| `pawsoff run <cmd>` | Start gateway + run a tool through it (`claude`, `codex`, etc.) |
+| `pawsoff gateway` | Run the gateway on its own (port 4480) |
+| `pawsoff popup` | Live companion window with today's activity |
+| `pawsoff ui` | Local dashboard |
+| `pawsoff sessions` | List recent AI sessions |
+| `pawsoff clear --session <id>` | Clear one session's data |
+| `pawsoff clear --older-than <days>` | Clear old events |
+| `pawsoff pr-check` | Check a pull request (in GitHub Actions) |
+| `pawsoff verify-log` | Confirm the edit log hasn't been tampered with |
 
 ## AI tool support
 
 | Tool | File hiding | Pre-edit hooks | Gateway (prompt redaction) |
 |------|------------|---------------|--------------------------|
-| Claude Code | `.claude/settings.json` | Yes | `paws run claude` |
-| Codex CLI | ignore files | Planned | `paws run codex` |
+| Claude Code | `.claude/settings.json` | Yes | `pawsoff run claude` |
+| Codex CLI | ignore files | Planned | `pawsoff run codex` |
 | Cursor | `.cursorignore` | — | — |
 | Windsurf | `.codeiumignore` | — | — |
 | Aider | `.aiderignore` | — | `OPENAI_BASE_URL` |
 | Gemini Code Assist | `.aiexclude` | — | — |
 | Copilot | GitHub content exclusion | — | — |
 
-All tools get file-hiding via `paws sync`. The PR check catches AI changes regardless.
+All tools get file-hiding via `pawsoff sync`. The PR check catches AI changes regardless.
 
 ## Privacy
 
-- **Local database**: `~/.paws/paws.db` (SQLite). Real values encrypted with AES-256-GCM. Activity stored as counts and file names, never values.
-- **No telemetry, no account, no Paws server.** The only network connections are the ones your AI tools already make (with stand-ins in place of real data).
+- **Local database**: `~/.pawsoff/pawsoff.db` (SQLite). Real values encrypted with AES-256-GCM. Activity stored as counts and file names, never values.
+- **No telemetry, no account, no PawsOff server.** The only network connections are the ones your AI tools already make (with stand-ins in place of real data).
 - **Privacy test**: fails if any unexpected network call is added to the codebase.
 
 See [PRIVACY.md](PRIVACY.md).
@@ -141,7 +141,7 @@ See [PRIVACY.md](PRIVACY.md).
 ## Project structure
 
 ```
-bin/paws.js              CLI
+bin/pawsoff.js           CLI
 lib/                     Policy engine, hooks, redaction, gateway, audit log, sync
 .claude-plugin/          Claude Code plugin
 hooks/                   Hook definitions

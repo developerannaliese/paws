@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { parseYaml } = require('./yaml');
 const { matchPath, normalisePath } = require('./glob');
 
-const POLICY_FILES = ['.paws.yml', '.paws.yaml', '.paws.json'];
+const POLICY_FILES = ['.pawsoff.yml', '.pawsoff.yaml', '.pawsoff.json'];
 const ACTIONS = ['allow', 'warn', 'review', 'block'];
 const READ_ACTIONS = ['allow', 'redact', 'block'];
 const REDACT_TYPES = ['secret', 'card', 'medicare', 'tfn', 'abn', 'bank', 'email', 'phone', 'address', 'dob', 'name'];
@@ -15,10 +15,10 @@ const RANK = { allow: 0, warn: 1, review: 2, block: 3 };
 // The guard always protects itself: an AI agent must not be able to weaken
 // its own rules or rewrite the edit log.
 const BUILT_IN_RULES = [
-  { path: '.paws.yml', ai_edit: 'block', reason: 'The Paws policy can only be changed by a human', builtIn: true },
-  { path: '.paws.yaml', ai_edit: 'block', reason: 'The Paws policy can only be changed by a human', builtIn: true },
-  { path: '.paws.json', ai_edit: 'block', reason: 'The Paws policy can only be changed by a human', builtIn: true },
-  { path: '.paws/**', ai_edit: 'block', reason: 'The Paws edit log can only be written by Paws', builtIn: true },
+  { path: '.pawsoff.yml', ai_edit: 'block', reason: 'The PawsOff policy can only be changed by a human', builtIn: true },
+  { path: '.pawsoff.yaml', ai_edit: 'block', reason: 'The PawsOff policy can only be changed by a human', builtIn: true },
+  { path: '.pawsoff.json', ai_edit: 'block', reason: 'The PawsOff policy can only be changed by a human', builtIn: true },
+  { path: '.pawsoff/**', ai_edit: 'block', reason: 'The PawsOff edit log can only be written by PawsOff', builtIn: true },
 ];
 
 const DEFAULT_AI_MARKERS = [
@@ -68,7 +68,7 @@ function validate(raw, file) {
     });
   });
   if (errors.length) {
-    const err = new Error(`Paws policy ${file ? path.basename(file) + ' ' : ''}has problems: ${errors.join('; ')}`);
+    const err = new Error(`PawsOff policy ${file ? path.basename(file) + ' ' : ''}has problems: ${errors.join('; ')}`);
     err.policyErrors = errors;
     throw err;
   }
@@ -82,7 +82,7 @@ function validate(raw, file) {
   }
   if (rd.mode && !['placeholder', 'fake'].includes(String(rd.mode))) errors.push('redact.mode must be placeholder or fake');
   if (errors.length) {
-    const err = new Error(`Paws policy ${file ? path.basename(file) + ' ' : ''}has problems: ${errors.join('; ')}`);
+    const err = new Error(`PawsOff policy ${file ? path.basename(file) + ' ' : ''}has problems: ${errors.join('; ')}`);
     err.policyErrors = errors;
     throw err;
   }
@@ -122,7 +122,7 @@ function parsePolicyText(text, file) {
   try {
     raw = parseYaml(text);
   } catch (e) {
-    throw new Error(`Paws can't read ${file ? path.basename(file) : 'the policy'}: ${e.message}`);
+    throw new Error(`PawsOff can't read ${file ? path.basename(file) : 'the policy'}: ${e.message}`);
   }
   return validate(raw || {}, file);
 }

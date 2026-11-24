@@ -1,0 +1,26 @@
+# Copy to .github/workflows/pawsoff.yml
+# Then make "PawsOff" a required status check in your branch rules.
+name: PawsOff
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pawsoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so PawsOff can read every commit in the PR
+      - uses: your-org/pawsoff@v0   # or a local path: ./tools/pawsoff
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawsoff-evidence
+          path: pawsoff-evidence.json

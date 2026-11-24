@@ -1,9 +1,9 @@
 {
-  "name": "paws-vscode",
-  "displayName": "Paws",
-  "description": "See what Paws did in each AI session, which files AI tools can't touch, and get a pop-up when it stops something.",
+  "name": "pawsoff-vscode",
+  "displayName": "PawsOff",
+  "description": "See what PawsOff did in each AI session, which files AI tools can't touch, and get a pop-up when it stops something.",
   "version": "0.1.0",
-  "publisher": "paws",
+  "publisher": "pawsoff",
   "license": "UNLICENSED",
   "engines": {
     "vscode": "^1.85.0"
@@ -13,37 +13,37 @@
   ],
   "main": "./extension.js",
   "activationEvents": [
-    "workspaceContains:.paws.yml",
-    "workspaceContains:.paws.yaml",
-    "workspaceContains:.paws.json"
+    "workspaceContains:.pawsoff.yml",
+    "workspaceContains:.pawsoff.yaml",
+    "workspaceContains:.pawsoff.json"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "paws.openSessions",
-        "title": "Paws: Show sessions"
+        "command": "pawsoff.openSessions",
+        "title": "PawsOff: Show sessions"
       },
       {
-        "command": "paws.showRules",
-        "title": "Paws: Show protected files"
+        "command": "pawsoff.showRules",
+        "title": "PawsOff: Show protected files"
       },
       {
-        "command": "paws.checkFile",
-        "title": "Paws: Check this file"
+        "command": "pawsoff.checkFile",
+        "title": "PawsOff: Check this file"
       },
       {
-        "command": "paws.verifyLog",
-        "title": "Paws: Verify edit log"
+        "command": "pawsoff.verifyLog",
+        "title": "PawsOff: Verify edit log"
       },
       {
-        "command": "paws.init",
-        "title": "Paws: Create policy and install Claude Code hooks"
+        "command": "pawsoff.init",
+        "title": "PawsOff: Create policy and install Claude Code hooks"
       }
     ],
     "configuration": {
-      "title": "Paws",
+      "title": "PawsOff",
       "properties": {
-        "paws.popups": {
+        "pawsoff.popups": {
           "type": "string",
           "enum": [
             "important",
@@ -52,11 +52,11 @@
           ],
           "default": "important",
           "enumDescriptions": [
-            "Pop up when Paws stops something or needs your approval",
+            "Pop up when PawsOff stops something or needs your approval",
             "Also pop up when values are swapped",
             "Never pop up"
           ],
-          "description": "When Paws should pop up a notification."
+          "description": "When PawsOff should pop up a notification."
         }
       }
     }

@@ -1,8 +1,8 @@
 'use strict';
 
-// Paws for VS Code, Cursor and Windsurf.
+// PawsOff for VS Code, Cursor and Windsurf.
 // Shows which files are protected from AI edits, warns when a protected file
-// changes, pops up when Paws swaps data or stops something, and opens a
+// changes, pops up when PawsOff swaps data or stops something, and opens a
 // session panel showing what happened. Reads only files and the database on this machine.
 
 const vscode = require('vscode');
@@ -36,7 +36,7 @@ function popupText(entries) {
   }
   if (asked) parts.push(`needs your approval for ${plural(asked, 'edit')}`);
   if (!parts.length) return null;
-  return { text: `Paws ${parts.join(', ').replace(/, ([^,]*)$/, ' and $1')}.`, serious: stopped > 0 };
+  return { text: `PawsOff ${parts.join(', ').replace(/, ([^,]*)$/, ' and $1')}.`, serious: stopped > 0 };
 }
 
 const LABELS = {
@@ -52,7 +52,7 @@ function activate(context) {
   const warned = new Set();
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  status.command = 'paws.openSessions';
+  status.command = 'pawsoff.openSessions';
   context.subscriptions.push(status, changed);
 
   function reload() {
@@ -66,8 +66,8 @@ function activate(context) {
       }
     }
     const count = [...policies.values()].reduce((n, p) => n + p.userRuleCount, 0);
-    status.text = count ? `$(shield) Paws: ${count} rule${count === 1 ? '' : 's'}` : '$(shield) Paws: no policy';
-    status.tooltip = count ? 'Click to see what Paws did in each AI session.' : 'No .paws.yml in this workspace. Run "Paws: Create policy".';
+    status.text = count ? `$(shield) PawsOff: ${count} rule${count === 1 ? '' : 's'}` : '$(shield) PawsOff: no policy';
+    status.tooltip = count ? 'Click to see what PawsOff did in each AI session.' : 'No .pawsoff.yml in this workspace. Run "PawsOff: Create policy".';
     status.show();
     changed.fire(undefined);
   }
@@ -93,7 +93,7 @@ function activate(context) {
         if (!d || d.action === 'allow') return undefined;
         const l = LABELS[d.action];
         const extra = d.action === 'review' ? ` (${d.reviewers || 1} reviewer${(d.reviewers || 1) === 1 ? '' : 's'})` : '';
-        return new vscode.FileDecoration(l.badge, `Paws: ${l.text}${extra}${d.reason ? '. ' + d.reason : ''}`, new vscode.ThemeColor(l.color));
+        return new vscode.FileDecoration(l.badge, `PawsOff: ${l.text}${extra}${d.reason ? '. ' + d.reason : ''}`, new vscode.ThemeColor(l.color));
       },
     })
   );
@@ -113,11 +113,11 @@ function activate(context) {
         review: `AI changes need ${d.reviewers || 1} human approval(s) on the pull request.`,
         warn: 'AI changes are logged and flagged on the pull request.',
       }[d.action];
-      vscode.window.showWarningMessage(`Paws: ${name} is protected. ${what}`);
+      vscode.window.showWarningMessage(`PawsOff: ${name} is protected. ${what}`);
     })
   );
 
-  const watcher = vscode.workspace.createFileSystemWatcher('**/.paws.{yml,yaml,json}');
+  const watcher = vscode.workspace.createFileSystemWatcher('**/.pawsoff.{yml,yaml,json}');
   watcher.onDidChange(reload);
   watcher.onDidCreate(reload);
   watcher.onDidDelete(reload);
@@ -125,7 +125,7 @@ function activate(context) {
   context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(reload));
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('paws.showRules', async () => {
+    vscode.commands.registerCommand('pawsoff.showRules', async () => {
       const items = [];
       for (const p of policies.values()) {
         for (const r of p.rules) {
@@ -137,38 +137,38 @@ function activate(context) {
         }
       }
       if (!items.length) {
-        vscode.window.showInformationMessage('No .paws.yml in this workspace. Run "Paws: Create policy".');
+        vscode.window.showInformationMessage('No .pawsoff.yml in this workspace. Run "PawsOff: Create policy".');
         return;
       }
       await vscode.window.showQuickPick(items, { placeHolder: 'Files protected from AI edits' });
     }),
 
-    vscode.commands.registerCommand('paws.checkFile', () => {
+    vscode.commands.registerCommand('pawsoff.checkFile', () => {
       const ed = vscode.window.activeTextEditor;
       if (!ed) return vscode.window.showInformationMessage('Open a file first.');
       const d = decisionFor(ed.document.uri);
-      if (!d) return vscode.window.showInformationMessage('No Paws policy covers this file.');
+      if (!d) return vscode.window.showInformationMessage('No PawsOff policy covers this file.');
       const text = d.action === 'allow' ? 'AI tools may edit this file.' : `${LABELS[d.action].text} (rule ${d.rules.join(', ')}).`;
-      vscode.window.showInformationMessage(`Paws: ${text}`);
+      vscode.window.showInformationMessage(`PawsOff: ${text}`);
     }),
 
-    vscode.commands.registerCommand('paws.verifyLog', () => {
+    vscode.commands.registerCommand('pawsoff.verifyLog', () => {
       const results = [];
       for (const p of policies.values()) {
         const v = ledger.verifyEntries(ledger.readLedger(p.root));
         results.push(v.ok ? `intact (${v.count} entries)` : `broken: ${v.reason}`);
       }
-      if (!results.length) return vscode.window.showInformationMessage('No Paws policy in this workspace.');
+      if (!results.length) return vscode.window.showInformationMessage('No PawsOff policy in this workspace.');
       const bad = results.some((r) => r.startsWith('broken'));
-      (bad ? vscode.window.showErrorMessage : vscode.window.showInformationMessage)(`Paws edit log: ${results.join('; ')}`);
+      (bad ? vscode.window.showErrorMessage : vscode.window.showInformationMessage)(`PawsOff edit log: ${results.join('; ')}`);
     }),
 
-    vscode.commands.registerCommand('paws.init', async () => {
+    vscode.commands.registerCommand('pawsoff.init', async () => {
       const folder = (vscode.workspace.workspaceFolders || [])[0];
       if (!folder) return vscode.window.showInformationMessage('Open a folder first.');
-      const term = vscode.window.createTerminal('Paws');
+      const term = vscode.window.createTerminal('PawsOff');
       term.show();
-      term.sendText(`node "${path.join(context.extensionPath, 'bin', 'paws.js')}" init --claude`);
+      term.sendText(`node "${path.join(context.extensionPath, 'bin', 'pawsoff.js')}" init --claude`);
     })
   );
 
@@ -182,7 +182,7 @@ function activate(context) {
     if (panel) {
       panel.reveal(vscode.ViewColumn.Beside, true);
     } else {
-      panel = vscode.window.createWebviewPanel('paws.sessions', 'Paws', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] });
+      panel = vscode.window.createWebviewPanel('pawsoff.sessions', 'PawsOff', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] });
       const nonce = crypto.randomBytes(16).toString('hex');
       panel.webview.html = page({ webview: true, cspSource: panel.webview.cspSource, nonce });
       panel.webview.onDidReceiveMessage((m) => {
@@ -203,7 +203,7 @@ function activate(context) {
     }
     if (sessionId) panel.webview.postMessage({ type: 'focus', session: sessionId });
   }
-  context.subscriptions.push(vscode.commands.registerCommand('paws.openSessions', (id) => openSessions(id)));
+  context.subscriptions.push(vscode.commands.registerCommand('pawsoff.openSessions', (id) => openSessions(id)));
 
   // ---------- pop-ups when something happens ----------
   const seen = new Map(); // root -> entries already handled
@@ -221,7 +221,7 @@ function activate(context) {
     timer = setTimeout(() => {
       const items = batch;
       batch = [];
-      const level = vscode.workspace.getConfiguration('paws').get('popups', 'important');
+      const level = vscode.workspace.getConfiguration('pawsoff').get('popups', 'important');
       if (level === 'off') return;
       const msg = popupText(items);
       if (!msg) return;
@@ -234,7 +234,7 @@ function activate(context) {
       });
     }, 1500);
   }
-  const logWatcher = vscode.workspace.createFileSystemWatcher('**/.paws/ledger.jsonl');
+  const logWatcher = vscode.workspace.createFileSystemWatcher('**/.pawsoff/ledger.jsonl');
   const onLog = (uri) => checkLog(path.dirname(path.dirname(uri.fsPath)));
   logWatcher.onDidChange(onLog);
   logWatcher.onDidCreate(onLog);

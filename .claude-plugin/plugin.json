@@ -1,5 +1,5 @@
 {
-  "name": "paws",
+  "name": "pawsoff",
   "version": "0.1.0",
-  "description": "Blocks or asks before Claude edits files protected by .paws.yml, and logs AI edits for pull request checks."
+  "description": "Blocks or asks before Claude edits files protected by .pawsoff.yml, and logs AI edits for pull request checks."
 }

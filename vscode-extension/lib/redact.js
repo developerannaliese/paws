@@ -326,8 +326,8 @@ function csvFindings(text, filePath, types) {
 
 // ---------- vault ----------
 
-function pawsHome(env = process.env) {
-  return env.PAWS_HOME || process.env.PAWS_HOME || path.join(os.homedir(), '.paws');
+function pawsoffHome(env = process.env) {
+  return env.PAWSOFF_HOME || process.env.PAWSOFF_HOME || path.join(os.homedir(), '.pawsoff');
 }
 
 function rootId(root) {
@@ -410,7 +410,7 @@ function remember(data, key, ph, value, fake) {
 class FileVault {
   constructor(root, env) {
     this.root = path.resolve(root);
-    this.file = path.join(pawsHome(env), 'vault', `${rootId(root)}.json`);
+    this.file = path.join(pawsoffHome(env), 'vault', `${rootId(root)}.json`);
     this.data = { root: this.root, counters: {}, byKey: {}, byPlaceholder: {}, fakes: [] };
     try {
       this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
@@ -515,7 +515,7 @@ class DbVault {
 
   // Move an older plain JSON vault into the encrypted database, then delete it.
   migrate(env) {
-    const old = path.join(pawsHome(env), 'vault', `${this.rid}.json`);
+    const old = path.join(pawsoffHome(env), 'vault', `${this.rid}.json`);
     if (!fs.existsSync(old)) return;
     try {
       const data = JSON.parse(fs.readFileSync(old, 'utf8'));
@@ -539,7 +539,7 @@ class DbVault {
 }
 
 function Vault(root, env) {
-  return require('./store').available() && !(env && env.PAWS_STORE === 'files') ? new DbVault(root, env) : new FileVault(root, env);
+  return require('./store').available() && !(env && env.PAWSOFF_STORE === 'files') ? new DbVault(root, env) : new FileVault(root, env);
 }
 
 // ---------- redact and restore ----------
@@ -552,7 +552,7 @@ function findAll(text, opts = {}) {
     for (const r of det.find(text, opts)) found.push({ ...r, type: det.type, label: det.label, priority });
   });
   for (const r of csvFindings(text, opts.filePath, types)) found.push({ ...r, priority: 50 });
-  // Custom labels from .paws.yml redact.custom
+  // Custom labels from .pawsoff.yml redact.custom
   for (const custom of opts.custom || []) {
     if (custom.pattern) {
       try {
@@ -599,7 +599,7 @@ function findAll(text, opts = {}) {
   return kept;
 }
 
-// Confidence: how sure Paws is that this is real personal data.
+// Confidence: how sure PawsOff is that this is real personal data.
 //  - "high": checksum-validated (TFN, ABN, Medicare, card) or structured (CSV column, vault match)
 //  - "medium": pattern-matched without checksum (email, phone, address, secret, labelled name)
 //  - "low": from local model only (names in free text, loose addresses)
@@ -678,7 +678,7 @@ function looksBinary(buf) {
 }
 
 module.exports = {
-  ALL_TYPES, DETECTORS, Vault, FileVault, DbVault, pawsHome, rootId,
+  ALL_TYPES, DETECTORS, Vault, FileVault, DbVault, pawsoffHome, rootId,
   findAll, redactText, restoreText, looksBinary, fakeValue,
   luhn, validTfn, validAbn, validMedicare,
 };

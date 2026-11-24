@@ -2,7 +2,7 @@
 
 // Claude Code hook handler.
 // PreToolUse: before an AI edit, deny it (block), make a human approve it (review),
-//             or flag it (warn), based on .paws.yml.
+//             or flag it (warn), based on .pawsoff.yml.
 // PostToolUse: after an AI edit lands, record it in the edit log so the
 //              pull request check knows which protected files an AI touched.
 
@@ -16,10 +16,10 @@ const { detectWithLocalModel } = require('./local-model');
 const { extractText, isDocument, isImage, ocrImage } = require('./extract');
 
 const MAX_REDACT_BYTES = 5 * 1024 * 1024;
-const BIN = path.resolve(__dirname, '..', 'bin', 'paws.js');
+const BIN = path.resolve(__dirname, '..', 'bin', 'pawsoff.js');
 
 function cacheDir(policy, env) {
-  return path.join(redact.pawsHome(env), 'cache', redact.rootId(policy.root));
+  return path.join(redact.pawsoffHome(env), 'cache', redact.rootId(policy.root));
 }
 
 // Redacted copies live outside the repo. Map a copy's path back to the real file.
@@ -114,14 +114,14 @@ function describe(d) {
   const target = d.path;
   const why = d.reason ? ` ${d.reason}.` : '';
   if (d.action === 'block') {
-    return `Paws: AI edits to "${target}" are blocked by rule "${d.rules.join(', ')}".${why} Ask a human to make this change.`;
+    return `PawsOff: AI edits to "${target}" are blocked by rule "${d.rules.join(', ')}".${why} Ask a human to make this change.`;
   }
   if (d.action === 'review') {
     const n = d.reviewers || 1;
     const team = d.teams && d.teams.length ? ` from ${d.teams.join(' or ')}` : '';
-    return `Paws: "${target}" is protected (rule "${d.rules.join(', ')}").${why} Approve only after you've read the change. The pull request will also need ${n} human approval${n === 1 ? '' : 's'}${team}.`;
+    return `PawsOff: "${target}" is protected (rule "${d.rules.join(', ')}").${why} Approve only after you've read the change. The pull request will also need ${n} human approval${n === 1 ? '' : 's'}${team}.`;
   }
-  return `Paws: "${target}" is flagged (rule "${d.rules.join(', ')}").${why} This AI edit will be logged.`;
+  return `PawsOff: "${target}" is flagged (rule "${d.rules.join(', ')}").${why} This AI edit will be logged.`;
 }
 
 function result(exitCode, stdoutObj, stderr) {
@@ -137,7 +137,7 @@ function safeAppend(root, fields) {
   }
 }
 
-const EDIT_NOTE = 'Paws note: personal and confidential values in this file were replaced on this machine with stand-ins. '
+const EDIT_NOTE = 'PawsOff note: personal and confidential values in this file were replaced on this machine with stand-ins. '
   + 'The real file still holds the real values. When you edit it: in old_string, quote only text that contains no stand-in (pick nearby text that is unique); '
   + 'in new_string you may use the stand-ins, and they will be turned back into the real values locally. Never guess the real values or try to read them another way.';
 
@@ -165,7 +165,7 @@ function runHook(stdinText, env) {
   try {
     input = JSON.parse(stdinText || '{}');
   } catch (e) {
-    return result(0, null, 'Paws: hook input was not JSON; skipping.');
+    return result(0, null, 'PawsOff: hook input was not JSON; skipping.');
   }
   const event = input.hook_event_name || 'PreToolUse';
   const tool = input.tool_name || '';
@@ -217,7 +217,7 @@ function runHook(stdinText, env) {
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: 'deny',
-          permissionDecisionReason: `Paws: "${r.path}" is hidden from AI tools (rule "${r.rules.join(', ')}").${r.reason ? ' ' + r.reason + '.' : ''} Don't try to read it another way; ask a human if you need something from it.`,
+          permissionDecisionReason: `PawsOff: "${r.path}" is hidden from AI tools (rule "${r.rules.join(', ')}").${r.reason ? ' ' + r.reason + '.' : ''} Don't try to read it another way; ask a human if you need something from it.`,
         },
       });
     }
@@ -252,7 +252,7 @@ function runHook(stdinText, env) {
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
                 permissionDecision: 'ask',
-                permissionDecisionReason: `Paws scanned this image with OCR and found possible PII: ${ocrWhat}. The image itself can't be redacted. Approve to let the AI see it, or deny to keep it hidden.`,
+                permissionDecisionReason: `PawsOff scanned this image with OCR and found possible PII: ${ocrWhat}. The image itself can't be redacted. Approve to let the AI see it, or deny to keep it hidden.`,
               },
             });
           }
@@ -263,7 +263,7 @@ function runHook(stdinText, env) {
             hookSpecificOutput: {
               hookEventName: 'PreToolUse',
               permissionDecision: 'ask',
-              permissionDecisionReason: `Paws can't scan images for personal data. This image (${rel}) might contain PII that won't be redacted. Approve to let the AI see it, or deny to keep it hidden.`,
+              permissionDecisionReason: `PawsOff can't scan images for personal data. This image (${rel}) might contain PII that won't be redacted. Approve to let the AI see it, or deny to keep it hidden.`,
             },
           });
         }
@@ -278,7 +278,7 @@ function runHook(stdinText, env) {
             hookSpecificOutput: {
               hookEventName: 'PreToolUse',
               permissionDecision: 'deny',
-              permissionDecisionReason: `Paws can't check ${rel} for personal data on this machine (install pdftotext for PDFs, or unzip for Word files), so it isn't shown to the AI. Ask a human for the parts you need.`,
+              permissionDecisionReason: `PawsOff can't check ${rel} for personal data on this machine (install pdftotext for PDFs, or unzip for Word files), so it isn't shown to the AI. Ask a human for the parts you need.`,
             },
           });
         }
@@ -300,7 +300,7 @@ function runHook(stdinText, env) {
           let uncertainNote = '';
           if (r.uncertain && r.uncertain.length) {
             const items = r.uncertain.map(u => `"${text.slice(u.start, u.end)}" (${u.label.toLowerCase()})`).slice(0, 5);
-            uncertainNote = `\n\nPaws also found ${r.uncertain.length} possible match${r.uncertain.length === 1 ? '' : 'es'} it wasn't sure about: ${items.join(', ')}. These were NOT redacted. To always redact these, add them to your .paws.yml allow list or confirm them in the Paws popup.`;
+            uncertainNote = `\n\nPawsOff also found ${r.uncertain.length} possible match${r.uncertain.length === 1 ? '' : 'es'} it wasn't sure about: ${items.join(', ')}. These were NOT redacted. To always redact these, add them to your .pawsoff.yml allow list or confirm them in the PawsOff popup.`;
             safeAppend(policy.root, { ...base, event: 'uncertain', path: rel, action: 'confirm_needed', found: Object.fromEntries(r.uncertain.map(u => [u.label, 1])) });
           }
 
@@ -308,10 +308,10 @@ function runHook(stdinText, env) {
             hookSpecificOutput: {
               hookEventName: 'PreToolUse',
               permissionDecision: r.uncertain && r.uncertain.length ? 'ask' : 'allow',
-              permissionDecisionReason: `Paws redacted ${what} in ${rel} on this machine before the AI saw it.${uncertainNote}`,
+              permissionDecisionReason: `PawsOff redacted ${what} in ${rel} on this machine before the AI saw it.${uncertainNote}`,
               updatedInput: { ...toolInput, file_path: copy },
             },
-            systemMessage: `Paws: ${rel} shown to the AI with ${r.count} value(s) redacted (${what}). Placeholders like [EMAIL_1] are swapped back locally when the AI edits the file.`,
+            systemMessage: `PawsOff: ${rel} shown to the AI with ${r.count} value(s) redacted (${what}). Placeholders like [EMAIL_1] are swapped back locally when the AI edits the file.`,
           });
         }
       }
@@ -330,7 +330,7 @@ function runHook(stdinText, env) {
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
           permissionDecision: input.permission_mode === 'bypassPermissions' ? 'allow' : 'ask',
-          permissionDecisionReason: 'Paws will redact personal and confidential data in this command\'s output before the AI sees it.',
+          permissionDecisionReason: 'PawsOff will redact personal and confidential data in this command\'s output before the AI sees it.',
           updatedInput: { ...toolInput, command: wrapped },
         },
       });
@@ -360,7 +360,7 @@ function runHook(stdinText, env) {
     const target = decisions[0] ? decisions[0].path : null;
     safeAppend(policy.root, { ...base, event: 'restored', path: target, action: 'restore', count: tr.restored });
   }
-  const restoreNote = tr.restored ? ` Paws put back ${tr.restored} redacted value(s) on this machine before saving.` : '';
+  const restoreNote = tr.restored ? ` PawsOff put back ${tr.restored} redacted value(s) on this machine before saving.` : '';
   const withInput = (hso) => (tr.changed ? { ...hso, updatedInput: toolInput } : hso);
   if (top.action === 'allow') {
     if (!tr.changed) return result(0);
@@ -368,7 +368,7 @@ function runHook(stdinText, env) {
       hookSpecificOutput: withInput({
         hookEventName: 'PreToolUse',
         permissionDecision: autoApprove ? 'allow' : 'ask',
-        permissionDecisionReason: restoreNote.trim() || 'Paws pointed this edit at the real file.',
+        permissionDecisionReason: restoreNote.trim() || 'PawsOff pointed this edit at the real file.',
       }),
     });
   }

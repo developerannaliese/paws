@@ -1,6 +1,6 @@
 'use strict';
 
-// Pull request check: find changes an AI wrote, apply .paws.yml, and confirm
+// Pull request check: find changes an AI wrote, apply .pawsoff.yml, and confirm
 // protected files got the human approvals the policy asks for.
 // Works in GitHub Actions (reads the event payload and calls the GitHub API)
 // or locally between two commits (--base/--head) in report-only mode.
@@ -78,7 +78,7 @@ function ledgerAt(cwd, rev) {
 }
 
 function policyAt(cwd, rev, fallbackDir) {
-  for (const name of ['.paws.yml', '.paws.yaml', '.paws.json']) {
+  for (const name of ['.pawsoff.yml', '.pawsoff.yaml', '.pawsoff.json']) {
     const text = git(cwd, ['show', `${rev}:${name}`], { allowFail: true });
     if (text !== null) {
       const p = parsePolicyText(text, name);
@@ -92,7 +92,7 @@ function policyAt(cwd, rev, fallbackDir) {
 
 async function githubJson(url, token) {
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'paws' },
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'pawsoff' },
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status} for ${url}`);
   return res.json();
@@ -132,8 +132,8 @@ async function prCheck(opts = {}) {
   const event = readEvent(env);
   const pr = event && event.pull_request ? event.pull_request : null;
 
-  const base = opts.base || (pr && pr.base && pr.base.sha) || env.PAWS_BASE;
-  const head = opts.head || (pr && pr.head && pr.head.sha) || env.PAWS_HEAD || 'HEAD';
+  const base = opts.base || (pr && pr.base && pr.base.sha) || env.PAWSOFF_BASE;
+  const head = opts.head || (pr && pr.head && pr.head.sha) || env.PAWSOFF_HEAD || 'HEAD';
   if (!base) throw new Error('No base commit. In GitHub Actions run this on pull_request events; locally pass --base <ref>.');
   const headSha = git(cwd, ['rev-parse', head]).trim();
   const baseSha = git(cwd, ['rev-parse', base]).trim();
@@ -141,7 +141,7 @@ async function prCheck(opts = {}) {
   // Use the policy from the base branch, so a pull request can't loosen its own rules.
   const policy = policyAt(cwd, baseSha, cwd);
   if (!policy) {
-    return { ok: true, skipped: true, summaryMd: '### Paws\n\nNo `.paws.yml` on the base branch, so there is nothing to check.\n', evidence: null };
+    return { ok: true, skipped: true, summaryMd: '### PawsOff\n\nNo `.pawsoff.yml` on the base branch, so there is nothing to check.\n', evidence: null };
   }
 
   const commits = listCommits(cwd, baseSha, headSha);
@@ -183,7 +183,7 @@ async function prCheck(opts = {}) {
 
   const decisions = [];
   for (const [p, sources] of touched) {
-    // The edit log is written by Paws itself and checked by its hash chain above.
+    // The edit log is written by PawsOff itself and checked by its hash chain above.
     if (p === ledger.LEDGER_REL) continue;
     const d = decide(policy, p);
     if (d.action === 'allow') continue;
@@ -232,7 +232,7 @@ async function prCheck(opts = {}) {
   const ok = problems.length === 0;
 
   const evidence = {
-    tool: 'paws', version: VERSION,
+    tool: 'pawsoff', version: VERSION,
     generated_at: new Date().toISOString(),
     repository: repo || null,
     pull_request: prNumber || null,
@@ -249,7 +249,7 @@ async function prCheck(opts = {}) {
   evidence.sha256 = ledger.sha256(JSON.stringify(evidence));
 
   const lines = [];
-  lines.push(`### Paws: ${ok ? 'passed' : 'needs attention'}`);
+  lines.push(`### PawsOff: ${ok ? 'passed' : 'needs attention'}`);
   lines.push('');
   lines.push(`Checked ${commits.length} commit(s); ${aiCommits.length} written with AI tools. ${decisions.length} protected file(s) touched by AI.`);
   if (decisions.length) {
@@ -263,7 +263,7 @@ async function prCheck(opts = {}) {
   }
   if (approvers) lines.push('', `Approvals counted: ${approvers.length ? approvers.join(', ') : 'none'}.`);
   if (approvalNote) lines.push('', approvalNote);
-  if (blockedAttempts.length) lines.push('', `Paws stopped ${blockedAttempts.length} AI edit attempt(s) on protected files during development.`);
+  if (blockedAttempts.length) lines.push('', `PawsOff stopped ${blockedAttempts.length} AI edit attempt(s) on protected files during development.`);
   if (problems.length) {
     lines.push('', '**To fix:**');
     for (const p of problems) lines.push(`- ${p}`);
