@@ -132,8 +132,10 @@ test('hook catches shell commands that write to protected files', () => {
   assert.strictEqual(sed.json.hookSpecificOutput.permissionDecision, 'deny');
   const rmdir = hook(dir, { tool_name: 'Bash', tool_input: { command: 'rm -rf payments' } });
   assert.strictEqual(rmdir.json.hookSpecificOutput.permissionDecision, 'ask');
+  // Read-only commands now get shell output redaction by default
   const read = hook(dir, { tool_name: 'Bash', tool_input: { command: 'cat payments/charge.ts | grep total 2>&1' } });
-  assert.strictEqual(read.stdout, '');
+  assert.strictEqual(read.json.hookSpecificOutput.permissionDecision, 'ask');
+  assert.match(read.json.hookSpecificOutput.permissionDecisionReason, /redact/);
   assert.deepStrictEqual(pathsFromCommand('ls -la payments', dir), []);
 });
 
@@ -309,7 +311,9 @@ test('hook: shell output from redacted paths goes through the redactor', () => {
   const shown = execFileSync('bash', ['-c', out.updatedInput.command], { cwd: dir, encoding: 'utf8' });
   assert.match(shown, /Contact \[EMAIL_\d+\] on \[PHONE_\d+\]/);
   assert.ok(!shown.includes('sam@acme.com.au'));
-  assert.strictEqual(hook(dir, { tool_name: 'Bash', tool_input: { command: 'ls src' } }).stdout, '', 'other commands are untouched');
+  // With shellOutput on by default, all commands get wrapped
+  const lsRes = hook(dir, { tool_name: 'Bash', tool_input: { command: 'ls src' } });
+  assert.strictEqual(lsRes.json.hookSpecificOutput.permissionDecision, 'ask', 'shell output redaction covers all commands');
 });
 
 test('hook: an optional local model adds names the patterns miss', async () => {
