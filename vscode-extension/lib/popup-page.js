@@ -1,6 +1,6 @@
 'use strict';
 
-// The corner pop-up: PawsOff companion. Black, white, Nantucket red.
+// The corner pop-up: PawsOff companion. Black, white, Soft Indigo.
 
 function popupPage(token) {
   return `<!doctype html>
@@ -13,15 +13,15 @@ function popupPage(token) {
 <style>
 :root {
   --bg: #FFFFFF; --fg: #111111; --muted: #888888; --line: #E8E8E8; --soft: #F5F5F5;
-  --red: #BE5B4B; --red2: #A84D3F; --red-soft: #FDF2F0;
-  --stop: #BE5B4B; --ask: #D4943A; --back: #4A9B62; --kept: #BE5B4B;
+  --accent: #6366F1; --accent2: #4F46E5; --accent-soft: #EEF2FF;
+  --stop: #DC2626; --ask: #D4943A; --back: #4A9B62; --kept: #6366F1;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #111111; --fg: #F0F0F0; --muted: #777777; --line: #262626; --soft: #1A1A1A;
-    --red: #D4756A; --red2: #E08A7F; --red-soft: #231816;
-    --stop: #D4756A; --ask: #E8B86D; --back: #6CC485; --kept: #D4756A; color-scheme: dark; }
+    --accent: #818CF8; --accent2: #A5B4FC; --accent-soft: #1E1B4B;
+    --stop: #F87171; --ask: #E8B86D; --back: #6CC485; --kept: #818CF8; color-scheme: dark; }
 }
 * { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; }
@@ -41,7 +41,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px;
 .gear svg { width: 15px; height: 15px; }
 
 .hero { padding: 16px 16px 14px; }
-.big-num { font-size: 36px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--red); }
+.big-num { font-size: 36px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
 .big-label { font-size: 11.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
 .stats { display: flex; gap: 6px; margin-top: 12px; }
 .stat { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 0; text-align: center; }
@@ -52,10 +52,10 @@ header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px;
 .tabs { display: flex; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .tab { flex: 1; background: none; border: none; padding: 8px 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid transparent; text-align: center; }
 .tab:hover { color: var(--fg); }
-.tab.on { color: var(--fg); border-bottom-color: var(--red); }
+.tab.on { color: var(--fg); border-bottom-color: var(--accent); }
 
-.session { padding: 10px 16px; background: var(--red-soft); border-bottom: 1px solid var(--line); }
-.session .label { font-size: 9.5px; color: var(--red); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+.session { padding: 10px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--line); }
+.session .label { font-size: 9.5px; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
 .session .detail { margin-top: 2px; font-size: 12px; }
 .session .detail b { font-weight: 700; }
 
@@ -65,7 +65,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px;
 .feed li:last-child { border-bottom: 0; }
 .ev-top { display: flex; align-items: center; gap: 8px; }
 .ev-tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 3px; flex: none; }
-.ev-tag.kept { background: var(--red); color: white; }
+.ev-tag.kept { background: var(--accent); color: white; }
 .ev-tag.stop { background: var(--fg); color: var(--bg); }
 .ev-tag.ask { background: var(--ask); color: white; }
 .ev-tag.back { background: var(--soft); color: var(--fg); border: 1px solid var(--line); }
@@ -91,27 +91,27 @@ header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px;
 .badge.block { background: var(--fg); color: var(--bg); }
 .badge.review { background: var(--ask); color: white; }
 .badge.warn { border: 1px solid var(--line); color: var(--muted); }
-.badge.redact { background: var(--red); color: white; }
+.badge.redact { background: var(--accent); color: white; }
 .badge.allow { border: 1px solid var(--line); color: var(--muted); }
 
 .toggle { background: none; border: 1px solid var(--line); border-radius: 4px; padding: 2px 10px; font: inherit; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--fg); }
-.toggle:hover { border-color: var(--red); }
+.toggle:hover { border-color: var(--accent); }
 .toggle.on { color: var(--back); border-color: var(--back); }
 .toggle.off { color: var(--stop); border-color: var(--stop); }
 .add-row { display: flex; gap: 4px; margin-top: 8px; align-items: center; }
 .sinput { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font: inherit; font-size: 11px; font-family: var(--mono); color: var(--fg); outline: none; }
-.sinput:focus { border-color: var(--red); }
+.sinput:focus { border-color: var(--accent); }
 .sbtn { background: var(--fg); color: var(--bg); border: none; border-radius: 4px; padding: 4px 10px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
 .sbtn:hover { opacity: 0.8; }
 .sbtn-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 4px; }
 .sbtn-x:hover { color: var(--stop); }
 .custom-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--line); }
 .custom-item:last-child { border-bottom: 0; }
-.custom-item .clabel { font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--red); }
+.custom-item .clabel { font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--accent); }
 .custom-item .cpattern { font-family: var(--mono); font-size: 11px; flex: 1; color: var(--muted); overflow-wrap: anywhere; }
 
 footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); }
-footer a { color: var(--red); text-decoration: none; font-weight: 600; }
+footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
 footer a:hover { text-decoration: underline; }
 </style>
 </head>
