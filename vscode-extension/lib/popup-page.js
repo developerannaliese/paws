@@ -94,6 +94,22 @@ header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px;
 .badge.redact { background: var(--red); color: white; }
 .badge.allow { border: 1px solid var(--line); color: var(--muted); }
 
+.toggle { background: none; border: 1px solid var(--line); border-radius: 4px; padding: 2px 10px; font: inherit; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--fg); }
+.toggle:hover { border-color: var(--red); }
+.toggle.on { color: var(--back); border-color: var(--back); }
+.toggle.off { color: var(--stop); border-color: var(--stop); }
+.add-row { display: flex; gap: 4px; margin-top: 8px; align-items: center; }
+.sinput { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font: inherit; font-size: 11px; font-family: var(--mono); color: var(--fg); outline: none; }
+.sinput:focus { border-color: var(--red); }
+.sbtn { background: var(--fg); color: var(--bg); border: none; border-radius: 4px; padding: 4px 10px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.sbtn:hover { opacity: 0.8; }
+.sbtn-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 4px; }
+.sbtn-x:hover { color: var(--stop); }
+.custom-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--line); }
+.custom-item:last-child { border-bottom: 0; }
+.custom-item .clabel { font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--red); }
+.custom-item .cpattern { font-family: var(--mono); font-size: 11px; flex: 1; color: var(--muted); overflow-wrap: anywhere; }
+
 footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); }
 footer a { color: var(--red); text-decoration: none; font-weight: 600; }
 footer a:hover { text-decoration: underline; }
@@ -142,10 +158,19 @@ footer a:hover { text-decoration: underline; }
 <div class="settings panel" id="panel-settings">
   <div class="sgroup">
     <div class="stitle">Protection</div>
-    <div class="srow"><span>Redaction</span><span class="sval" id="s-redact">-</span></div>
-    <div class="srow"><span>Mode</span><span class="sval" id="s-mode">-</span></div>
+    <div class="srow"><span>Redaction</span><button class="toggle" id="s-redact-btn" data-key="enabled">-</button></div>
+    <div class="srow"><span>Mode</span><button class="toggle" id="s-mode-btn" data-key="mode">-</button></div>
     <div class="srow"><span>Local model</span><span class="sval" id="s-model">-</span></div>
     <div class="srow"><span>Shell output</span><span class="sval" id="s-shell">-</span></div>
+  </div>
+  <div class="sgroup">
+    <div class="stitle">Custom labels</div>
+    <div id="s-custom"></div>
+    <div class="add-row" id="add-custom">
+      <input type="text" id="cl-label" placeholder="SALARY" class="sinput" style="width:30%">
+      <input type="text" id="cl-pattern" placeholder="\\$[\\d,]+\\.\\d{2}" class="sinput" style="width:45%">
+      <button class="sbtn" id="cl-add">Add</button>
+    </div>
   </div>
   <div class="sgroup">
     <div class="stitle">Rules</div>
@@ -254,13 +279,34 @@ footer a:hover { text-decoration: underline; }
     }
   }
 
+  var currentSettings = {};
+
+  function postSettings(changes) {
+    fetch("/api/settings", { method: "POST", headers: { "x-paws-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify(changes) })
+      .then(function () { loadSettings(); })
+      .catch(function () {});
+  }
+
+  $("s-redact-btn").addEventListener("click", function () { postSettings({ enabled: !currentSettings.redactEnabled }); });
+  $("s-mode-btn").addEventListener("click", function () { postSettings({ mode: currentSettings.mode === "fake" ? "placeholder" : "fake" }); });
+  $("cl-add").addEventListener("click", function () {
+    var label = $("cl-label").value.trim();
+    var pattern = $("cl-pattern").value.trim();
+    if (!label || !pattern) return;
+    postSettings({ addCustom: { label: label, pattern: pattern } });
+    $("cl-label").value = "";
+    $("cl-pattern").value = "";
+  });
+
   function loadSettings() {
     fetch("/api/settings", { headers: { "x-paws-token": TOKEN } })
       .then(function (r) { return r.json(); })
       .then(function (s) {
-        $("s-redact").textContent = s.redactEnabled ? "On" : "Off";
-        $("s-redact").className = "sval " + (s.redactEnabled ? "on" : "off");
-        $("s-mode").textContent = s.mode || "placeholder";
+        currentSettings = s;
+        $("s-redact-btn").textContent = s.redactEnabled ? "On" : "Off";
+        $("s-redact-btn").className = "toggle " + (s.redactEnabled ? "on" : "off");
+        $("s-mode-btn").textContent = s.mode || "placeholder";
+        $("s-mode-btn").className = "toggle";
         $("s-model").textContent = s.localModel || "None";
         $("s-model").className = "sval " + (s.localModel ? "on" : "");
         $("s-shell").textContent = s.shellOutput ? "On" : "Off";
@@ -272,6 +318,12 @@ footer a:hover { text-decoration: underline; }
           var action = r.ai_read === "block" ? "block" : r.ai_read === "redact" ? "redact" : r.ai_edit || "allow";
           return '<div class="rule"><span class="badge ' + esc(action) + '">' + esc(action) + '</span><span class="rpath">' + esc(r.path) + '</span></div>';
         }).join("") || '<div style="font-size:12px;color:var(--muted)">No rules</div>';
+        $("s-custom").innerHTML = (s.custom || []).map(function (c) {
+          return '<div class="custom-item"><span class="clabel">' + esc(c.label) + '</span><span class="cpattern">' + esc(c.pattern || c.columns.join(", ")) + '</span><button class="sbtn-x" data-remove="' + esc(c.label) + '">\u00d7</button></div>';
+        }).join("") || '<div style="font-size:11px;color:var(--muted);padding:4px 0">No custom labels. Add one below.</div>';
+        document.querySelectorAll(".sbtn-x[data-remove]").forEach(function (btn) {
+          btn.addEventListener("click", function () { postSettings({ removeCustom: btn.dataset.remove }); });
+        });
       })
       .catch(function () {});
   }

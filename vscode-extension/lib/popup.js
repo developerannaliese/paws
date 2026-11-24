@@ -14,7 +14,8 @@ const store = require('./store');
 const { popupPage } = require('./popup-page');
 const { page } = require('./ui-page');
 const { buildState, reveal } = require('./ui');
-const { loadPolicy } = require('./policy');
+const { loadPolicy, findPolicyFile } = require('./policy');
+const { parseYaml, writeYaml } = require('./yaml');
 
 function isToday(ts) {
   return new Date(ts).toDateString() === new Date().toDateString();
@@ -172,12 +173,66 @@ function startPopup({ port = 4478, env = process.env, notifications = true } = {
             settings.localModel = (policy.redact && policy.redact.localModel) || null;
             settings.shellOutput = !!(policy.redact && policy.redact.shellOutput);
             settings.rules = policy.rules.filter(r => !r.builtIn).map(r => ({ path: r.path, ai_edit: r.ai_edit, ai_read: r.ai_read, reason: r.reason }));
+            settings.custom = policy.redact.custom || [];
             settings.policyFile = path.basename(policy.file);
             settings.repo = path.basename(policy.root);
           }
         } catch (e) { /* use defaults */ }
       }
       return send(200, settings);
+    }
+    // POST /api/settings - update policy from the popup UI
+    if (req.method === 'POST' && url.pathname === '/api/settings') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const changes = JSON.parse(body || '{}');
+          const settingsRoot = root || (store.recentEvents({ limit: 1 }, env)[0] || {}).root;
+          if (!settingsRoot) return send(400, { error: 'No repo found' });
+          const policyFile = findPolicyFile(settingsRoot);
+          if (!policyFile) return send(400, { error: 'No .paws.yml found' });
+          const raw = parseYaml(fs.readFileSync(policyFile, 'utf8'));
+
+          // Toggle redaction
+          if ('enabled' in changes) {
+            if (!raw.redact || typeof raw.redact !== 'object') raw.redact = {};
+            raw.redact.enabled = !!changes.enabled;
+          }
+          // Switch mode
+          if ('mode' in changes && ['placeholder', 'fake'].includes(changes.mode)) {
+            if (!raw.redact || typeof raw.redact !== 'object') raw.redact = {};
+            raw.redact.mode = changes.mode;
+          }
+          // Add custom label
+          if (changes.addCustom && changes.addCustom.label && changes.addCustom.pattern) {
+            if (!raw.redact || typeof raw.redact !== 'object') raw.redact = {};
+            if (!Array.isArray(raw.redact.custom)) raw.redact.custom = [];
+            raw.redact.custom.push({
+              label: String(changes.addCustom.label).toUpperCase(),
+              pattern: String(changes.addCustom.pattern),
+              ...(changes.addCustom.near ? { near: changes.addCustom.near } : {}),
+              ...(changes.addCustom.columns ? { columns: changes.addCustom.columns } : {}),
+            });
+          }
+          // Remove custom label
+          if (changes.removeCustom && Array.isArray(raw.redact && raw.redact.custom)) {
+            raw.redact.custom = raw.redact.custom.filter(c => c.label !== changes.removeCustom);
+            if (!raw.redact.custom.length) delete raw.redact.custom;
+          }
+          // Add rule
+          if (changes.addRule && changes.addRule.path) {
+            if (!Array.isArray(raw.rules)) raw.rules = [];
+            raw.rules.push(changes.addRule);
+          }
+
+          fs.writeFileSync(policyFile, writeYaml(raw));
+          return send(200, { ok: true });
+        } catch (e) {
+          return send(400, { error: e.message });
+        }
+      });
+      return;
     }
     if (req.method === 'GET' && url.pathname === '/full' && root) return send(200, page({ token, root }), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/state' && root) return send(200, buildState(root, env));

@@ -100,4 +100,47 @@ function parseYaml(text) {
   return root;
 }
 
-module.exports = { parseYaml, parseScalar };
+// Write a policy object back to YAML. Minimal but correct for .paws.yml.
+function writeYaml(obj) {
+  const lines = [];
+  const scalar = (v) => {
+    if (v === null || v === undefined) return 'null';
+    if (v === true) return 'true';
+    if (v === false) return 'false';
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'string' && /^[\w./*-]+$/.test(v)) return v;
+    return JSON.stringify(v);
+  };
+  const inlineArray = (arr) => '[' + arr.map(scalar).join(', ') + ']';
+
+  for (const [key, val] of Object.entries(obj)) {
+    if (val === null || val === undefined) continue;
+    if (Array.isArray(val)) {
+      lines.push(`${key}:`);
+      for (const item of val) {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          const entries = Object.entries(item);
+          if (entries.length) {
+            lines.push(`  - ${entries[0][0]}: ${scalar(entries[0][1])}`);
+            for (let i = 1; i < entries.length; i++) {
+              lines.push(`    ${entries[i][0]}: ${scalar(entries[i][1])}`);
+            }
+          }
+        } else {
+          lines.push(`  - ${scalar(item)}`);
+        }
+      }
+    } else if (val && typeof val === 'object') {
+      lines.push(`${key}:`);
+      for (const [k, v] of Object.entries(val)) {
+        if (Array.isArray(v)) lines.push(`  ${k}: ${inlineArray(v)}`);
+        else lines.push(`  ${k}: ${scalar(v)}`);
+      }
+    } else {
+      lines.push(`${key}: ${scalar(val)}`);
+    }
+  }
+  return lines.join('\n') + '\n';
+}
+
+module.exports = { parseYaml, parseScalar, writeYaml };

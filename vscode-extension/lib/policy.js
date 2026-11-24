@@ -95,6 +95,12 @@ function validate(raw, file) {
     localModelUrl: rd.local_model_url || null,
     allowEmails: Array.isArray(rd.allow_emails) ? rd.allow_emails.map(String) : [],
     confirm: rd.confirm === true,
+    custom: Array.isArray(rd.custom) ? rd.custom.map(c => ({
+      label: String(c.label || 'CUSTOM').toUpperCase(),
+      pattern: c.pattern ? String(c.pattern) : null,
+      near: Array.isArray(c.near) ? c.near.map(String) : null,
+      columns: Array.isArray(c.columns) ? c.columns.map(String) : null,
+    })).filter(c => c.pattern || c.columns) : [],
   };
   let markers = DEFAULT_AI_MARKERS;
   if (Array.isArray(raw.ai_authors) && raw.ai_authors.length) {

@@ -552,6 +552,24 @@ function findAll(text, opts = {}) {
     for (const r of det.find(text, opts)) found.push({ ...r, type: det.type, label: det.label, priority });
   });
   for (const r of csvFindings(text, opts.filePath, types)) found.push({ ...r, priority: 50 });
+  // Custom labels from .paws.yml redact.custom
+  for (const custom of opts.custom || []) {
+    if (custom.pattern) {
+      try {
+        const re = new RegExp(custom.pattern, 'g');
+        for (const r of matches(text, re)) {
+          if (custom.near && !near(text, r.start, custom.near, 60)) continue;
+          found.push({ ...r, type: 'custom', label: custom.label, priority: 45 });
+        }
+      } catch (e) { /* invalid regex, skip */ }
+    }
+    // Custom CSV columns
+    if (custom.columns) {
+      for (const col of custom.columns) {
+        SENSITIVE_COLUMNS.push([new RegExp(`^${col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), custom.label, 'custom']);
+      }
+    }
+  }
   for (const extra of opts.extraFindings || []) found.push({ priority: 60, ...extra });
   // Anything already in the vault is sensitive wherever it turns up again, even in
   // a plain sentence no detector would flag (for example the AI's own earlier reply).
